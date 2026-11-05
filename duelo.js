@@ -23,11 +23,18 @@
 
   /* ---------- liga a sala, se a página permitir ---------- */
   (async () => {
-    try { room = window.claude && window.claude.use ? await window.claude.use('room') : null; } catch (e) { room = null; }
-    try {
-      const user = window.claude && window.claude.use ? await window.claude.use('user') : null;
-      ehProf = !!(user && (await Promise.resolve(user.canEdit())));
-    } catch (e) { ehProf = false; }
+    if (window.claude && window.claude.use) {
+      // dentro do Claude: sala do próprio Claude (precisa de conta); só quem edita a página abre a sala
+      try { room = await window.claude.use('room'); } catch (e) { room = null; }
+      try {
+        const user = await window.claude.use('user');
+        ehProf = !!(user && (await Promise.resolve(user.canEdit())));
+      } catch (e) { ehProf = false; }
+    } else if (window.SalaFirebase) {
+      // no site: sala pelo Firebase (sem conta), como no jogo das áreas; o professor abre pela Área do professor
+      room = await window.SalaFirebase.abrir();
+      ehProf = !!room;
+    }
     $('btAbrirSala').hidden = !(room && ehProf);
     $('btDuelo').hidden = !room; // fora do Claude (ex.: no site), o duelo não funciona: some o botão
   })();
@@ -43,7 +50,7 @@
     const c = A.decodificar($('inCodigo').value);
     if (!c) { $('avisoCodigo').textContent = 'Digite primeiro o código da turma que o professor passou.'; return; }
     if (!room) {
-      $('avisoCodigo').textContent = 'O duelo só funciona para quem entra com conta do Claude pelo link que o professor compartilhou. Sem conta, jogue contra o robô.';
+      $('avisoCodigo').textContent = 'Não consegui conectar à sala online. Confira a internet e tente de novo, ou jogue contra o robô.';
       return;
     }
     cfgSala = c; codigo = $('inCodigo').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -91,6 +98,9 @@
     const d = msg.data;
     if (!d || typeof d.r !== 'number' || d.r <= rodadaVista || estado !== 'esperando' || !sala) return;
     const eu = meuPeer(sala); if (!eu) return;
+    // só vale o sorteio feito por quem está na sala como professor
+    const remetente = sala.peers().find(p => p.peer === msg.peer);
+    if (!remetente || remetente.presence.papel !== 'professor') return;
     const pares = Array.isArray(d.p) ? d.p : [], sos = Array.isArray(d.s) ? d.s : [];
     const i = pares.findIndex(par => Array.isArray(par) && par.includes(eu));
     if (i >= 0) {
@@ -217,7 +227,7 @@
       }
       if (fimEnviado && Date.now() - fimEnviado > 5000) return;
       d.dr.presence({ papel: 'jogador', nome: meuNome, s: foto() }).catch(() => {});
-    }, 100));
+    }, 125)); // 8 vezes por segundo: suave e leve para o banco
     on.enviarFoto = () => d.dr.presence({ papel: 'jogador', nome: meuNome, s: foto() }); // usado nos testes
   }
 
@@ -383,7 +393,10 @@
       const vs = typeof pr.vs === 'string' ? pr.vs.slice(0, 16) : '';
       const cr = Array.isArray(pr.cr) ? `${pr.cr[0] | 0}×${pr.cr[1] | 0}` : '';
       if (pr.est === 'jogando') pill.textContent = `jogando contra ${vs}`;
-      else if (pr.est === 'fim') pill.textContent = `${(pr.cr && pr.cr[0] > pr.cr[1]) ? 'venceu' : (pr.cr && pr.cr[0] < pr.cr[1]) ? 'perdeu' : 'empatou'} de ${vs} ${cr}`;
+      else if (pr.est === 'fim') {
+        const v = pr.cr && pr.cr[0] > pr.cr[1], d = pr.cr && pr.cr[0] < pr.cr[1];
+        pill.textContent = `${v ? 'venceu de' : d ? 'perdeu de' : 'empatou com'} ${vs} ${cr}`;
+      }
       else pill.textContent = 'esperando';
       st.appendChild(pill);
       const ac = tr.insertCell();
