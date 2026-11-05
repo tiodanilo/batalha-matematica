@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Batalha Matemática: acerte as contas, ganhe energia e derrube as torres do inimigo. 6º ao 9º ano.">
+</head>
+<body>
+<title>Batalha Matemática</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Lilita+One&display=swap" rel="stylesheet">
+<style>
+:root {
+  --papel: #fbf6e9; --papel-2: #f2ead3; --tinta: #1f2a44; --tinta-2: #55607a;
+  --azul: #2f6fd6; --azul-claro: #dce8fb; --vermelho: #d6453d; --vermelho-claro: #fbe0de;
+  --verde: #2e9e5b; --verde-claro: #dcf3e5; --roxo: #7a3fd1; --ouro: #e6a817;
+  --linha: #c9d6ee; --margem: #e9a3a3; --borda: #d9cfb2; --sombra: 0 3px 0 rgba(31,42,68,.18);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --papel: #1c2130; --papel-2: #262c3e; --tinta: #eef1f8; --tinta-2: #a8b0c5;
+  --azul-claro: #22365c; --vermelho-claro: #4a2627; --verde-claro: #1f3d2c;
+  --linha: #2f3850; --margem: #6b3a3a; --borda: #3a4258; --sombra: 0 3px 0 rgba(0,0,0,.4); color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --papel: #1c2130; --papel-2: #262c3e; --tinta: #eef1f8; --tinta-2: #a8b0c5;
+  --azul-claro: #22365c; --vermelho-claro: #4a2627; --verde-claro: #1f3d2c;
+  --linha: #2f3850; --margem: #6b3a3a; --borda: #3a4258; --sombra: 0 3px 0 rgba(0,0,0,.4); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--papel); color: var(--tinta);
+  font-family: 'Baloo 2', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-tap-highlight-color: transparent; overflow: hidden;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+.tela {
+  position: fixed; inset: 0; display: none; overflow-y: auto;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px));
+}
+.tela.ativa { display: flex; }
+
+/* ---------- Telas de menu (papel de caderno) ---------- */
+.caderno {
+  flex-direction: column; align-items: center; padding-block: 24px 40px;
+  padding-left: max(52px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background:
+    linear-gradient(90deg, transparent 38px, var(--margem) 38px, var(--margem) 40px, transparent 40px),
+    repeating-linear-gradient(var(--papel) 0 31px, var(--linha) 31px 32px);
+}
+.miolo { width: 100%; max-width: 560px; }
+h1.titulo { font-size: clamp(40px, 11vw, 64px); line-height: .95; margin: 8px 0 4px; font-weight: 800; letter-spacing: -1px; }
+h1.titulo span { color: var(--azul); }
+.sub { color: var(--tinta-2); margin: 0 0 24px; font-size: 18px; }
+h2 { font-size: 22px; margin: 24px 0 8px; }
+.btn {
+  display: block; width: 100%; padding: 14px 18px; margin: 10px 0; border-radius: 14px;
+  border: 2px solid var(--tinta); background: var(--papel); font-weight: 700; font-size: 20px;
+  box-shadow: var(--sombra); text-align: left;
+}
+.btn:active { transform: translateY(2px); box-shadow: none; }
+.btn.prim { background: var(--azul); color: #fff; border-color: var(--azul); }
+.btn small { display: block; font-weight: 500; font-size: 15px; opacity: .8; }
+.cartao { background: var(--papel); border: 2px solid var(--borda); border-radius: 14px; padding: 14px 16px; margin: 12px 0; }
+.codigo-turma { display: flex; gap: 8px; }
+.codigo-turma input {
+  flex: 1; min-width: 0; font: inherit; font-size: 24px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase;
+  padding: 8px 12px; border-radius: 12px; border: 2px solid var(--tinta); background: var(--papel); color: var(--tinta);
+}
+.codigo-turma .btn { width: auto; margin: 0; }
+.aviso { color: var(--vermelho); font-weight: 700; min-height: 24px; }
+.temas { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.tema {
+  display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 12px;
+  border: 2px solid var(--borda); background: var(--papel); font-weight: 600; font-size: 16px; text-align: left; line-height: 1.1;
+}
+.tema .ic { font-size: 22px; }
+.tema small { display: block; font-size: 12px; font-weight: 500; color: var(--tinta-2); }
+.tema[aria-pressed="true"] { border-color: var(--azul); background: var(--azul-claro); }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { flex: 1; min-width: 64px; padding: 8px; border-radius: 10px; border: 2px solid var(--borda); background: var(--papel); font-weight: 700; }
+.seg button[aria-pressed="true"] { border-color: var(--azul); background: var(--azul-claro); }
+.codigo-grande { font-size: 44px; font-weight: 800; letter-spacing: 8px; color: var(--azul); text-align: center; margin: 4px 0; }
+.linha-acoes { display: flex; gap: 8px; } .linha-acoes .btn { text-align: center; }
+.amostra { font-size: 16px; padding-left: 18px; margin: 6px 0; } .amostra li { margin: 4px 0; }
+.amostra b { color: var(--verde); }
+.cartas-guia { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.cg { display: flex; gap: 10px; align-items: center; border: 2px solid var(--borda); border-radius: 12px; padding: 8px 10px; }
+.cg .ic { font-size: 30px; } .cg b { display: block; } .cg span { font-size: 14px; color: var(--tinta-2); line-height: 1.15; display: block; }
+.cg .custo { margin-left: auto; background: var(--roxo); color: #fff; border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; font-weight: 800; flex: none; }
+
+/* ---------- Marca d'água e tela cheia (padrão dos jogos do tiodanilo.com.br) ---------- */
+.wm {
+  position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  height: 20px; width: auto; opacity: .55; pointer-events: none; z-index: 25;
+}
+/* na partida, a marca vai para o canto de cima da arena, longe das cartas e das respostas */
+body:has(#telaJogo.ativa) .wm { bottom: auto; top: calc(58px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); height: 16px; opacity: .7; }
+.tool { border: none; background: none; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 0 0 auto; font-family: 'Baloo 2', sans-serif; }
+.tool .circle { width: 50px; height: 50px; border-radius: 50%; background: #fff; box-shadow: 0 5px 0 #b8c3d9; display: grid; place-items: center; transition: transform .1s; }
+.tool:active .circle { transform: translateY(4px); box-shadow: 0 1px 0 #b8c3d9; }
+.tool svg { width: 26px; height: 26px; }
+.tool .lbl { font-size: 11px; font-weight: 800; letter-spacing: .05em; line-height: 1; text-transform: uppercase; color: var(--tinta); }
+.fs-flutuante { position: fixed; z-index: 30; top: max(12px, env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); }
+.fs-flutuante[hidden] { display: none; }
+body:has(#telaJogo.ativa) .fs-flutuante { display: none; }
+body:has(#telaInicio.ativa) .fs-flutuante .lbl { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
+body:has(#telaInicio.ativa) .selo { margin-right: 52px; }
+@media (max-width: 600px) { .tool .circle { width: 40px; height: 40px; } .tool svg { width: 22px; height: 22px; } }
+.hud .fsBtn .circle { display: grid; place-items: center; }
+.hud .fsBtn svg { width: 18px; height: 18px; display: block; }
+.hud .fsBtn svg * { stroke: #fff; }
+
+/* ---------- Tela de início: batalha (visual único, não muda com o tema claro/escuro) ---------- */
+.inicio {
+  --ouro-1: #fff2a8; --ouro-2: #f7c531; --ouro-3: #c97a0a; --noite: #141a33; --borda-esc: #2a1606;
+  background: radial-gradient(ellipse at 50% 30%, #3b5bb0 0%, #1f2a5c 45%, #0c1024 100%);
+  flex-direction: column; overflow: hidden; color: #fff; padding: 0;
+}
+#vitrine3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.inicio-veu {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(8,12,30,.55) 0%, rgba(8,12,30,0) 30%, rgba(8,12,30,0) 48%, rgba(8,12,30,.82) 78%, rgba(8,12,30,.95) 100%);
+}
+.inicio-miolo {
+  position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; justify-content: space-between;
+  width: 100%; max-width: 460px; margin: 0 auto; gap: 16px;
+  padding-block: max(18px, env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.inicio-topo { text-align: center; }
+.selo {
+  display: inline-block; font-family: 'Lilita One', 'Baloo 2', sans-serif; font-size: 15px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--ouro-1); background: rgba(10,14,34,.7); border: 2px solid var(--ouro-3); border-radius: 999px; padding: 4px 14px;
+  animation: surgir .6s .1s both;
+}
+.logo { margin: 10px 0 4px; font-family: 'Lilita One', 'Baloo 2', sans-serif; font-weight: 400; line-height: .9; text-transform: uppercase; }
+.logo span { display: block; }
+.logo-a {
+  font-size: clamp(34px, 11vw, 58px); color: #fff; letter-spacing: 3px;
+  text-shadow: 0 3px 0 var(--borda-esc), 0 0 18px rgba(0,0,0,.6);
+  animation: cair .7s .2s cubic-bezier(.2,1.6,.4,1) both;
+}
+.logo-b {
+  position: relative; font-size: clamp(42px, 13.5vw, 92px); letter-spacing: 1px;
+  background: linear-gradient(180deg, var(--ouro-1) 0%, var(--ouro-2) 45%, var(--ouro-3) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-stroke: 3px var(--borda-esc);
+  filter: drop-shadow(0 6px 0 var(--borda-esc)) drop-shadow(0 0 24px rgba(247,197,49,.45));
+  animation: impacto .8s .35s cubic-bezier(.2,1.8,.4,1) both;
+}
+.chamada { margin: 8px auto 0; max-width: 32ch; font-size: 17px; font-weight: 700; text-shadow: 0 2px 6px rgba(0,0,0,.9); animation: surgir .6s .7s both; }
+.painel-batalha {
+  background: linear-gradient(180deg, rgba(36,44,86,.92), rgba(18,22,48,.95));
+  border: 3px solid var(--ouro-3); border-radius: 20px; padding: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,242,168,.15);
+  display: flex; flex-direction: column; gap: 10px; animation: subir .6s .55s both;
+}
+.rotulo { font-family: 'Lilita One', sans-serif; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ouro-1); text-align: center; }
+#inCodigo {
+  width: 100%; font-family: 'Lilita One', sans-serif; font-size: 30px; letter-spacing: 8px; text-align: center; text-transform: uppercase;
+  padding: 8px 10px; border-radius: 14px; border: 3px solid var(--borda-esc); background: #fbf1d6; color: #2a1606;
+  box-shadow: inset 0 3px 0 rgba(0,0,0,.15);
+}
+#inCodigo::placeholder { color: #c9b48a; }
+#inCodigo:focus-visible { outline: 3px solid var(--ouro-2); outline-offset: 2px; }
+.aviso-escuro { color: #ffd36b; font-weight: 700; font-size: 15px; text-align: center; min-height: 0; }
+.aviso-escuro:empty, .info-turma:empty { display: none; }
+.info-turma { font-size: 14px; color: #c9d3f5; text-align: center; }
+.dupla-botoes { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; }
+.dupla-botoes [hidden] { display: none; }
+.bj {
+  font-family: 'Lilita One', 'Baloo 2', sans-serif; font-size: 22px; line-height: 1; text-transform: uppercase; color: #fff;
+  border: 3px solid var(--borda-esc); border-radius: 16px; padding: 12px 6px 10px; cursor: pointer;
+  text-shadow: 0 2px 0 rgba(0,0,0,.45); display: flex; flex-direction: column; align-items: center; gap: 4px;
+  transition: transform .08s;
+}
+.bj small { font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 13px; text-transform: none; opacity: .9; }
+.bj-ic { font-size: 28px; }
+.bj-azul { background: linear-gradient(180deg, #6fb0ff, #2f6fd6 60%, #1d4790); box-shadow: 0 6px 0 #10285a, 0 8px 14px rgba(0,0,0,.4); }
+.bj-verm { background: linear-gradient(180deg, #ff8a6b, #d6453d 60%, #8f2620); box-shadow: 0 6px 0 #4f120e, 0 8px 14px rgba(0,0,0,.4); }
+.bj:active { transform: translateY(5px); box-shadow: 0 1px 0 #000; }
+.bj:focus-visible, .bj-mini:focus-visible { outline: 3px solid var(--ouro-2); outline-offset: 3px; }
+.linha-menor { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bj-mini {
+  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 14px; color: var(--ouro-1); cursor: pointer;
+  background: rgba(255,255,255,.06); border: 2px solid rgba(247,197,49,.45); border-radius: 12px; padding: 8px 4px; line-height: 1.1;
+}
+.bj-mini small { display: none; }
+.bj-mini:active { background: rgba(255,255,255,.14); }
+@keyframes cair { from { opacity: 0; transform: translateY(-60px) scale(1.2); } to { opacity: 1; transform: none; } }
+@keyframes impacto { 0% { opacity: 0; transform: scale(2.4) rotate(-6deg); } 60% { opacity: 1; } 100% { opacity: 1; transform: rotate(-2deg); } }
+@keyframes surgir { from { opacity: 0; } to { opacity: 1; } }
+@keyframes subir { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .inicio * { animation: none !important; } }
+@media (min-width: 900px) and (min-aspect-ratio: 4/3) {
+  .inicio-miolo { max-width: 1040px; flex-direction: row; align-items: flex-end; justify-content: space-between; }
+  .inicio-topo { text-align: left; align-self: flex-start; padding-top: 4vh; }
+  .chamada { margin-left: 0; }
+  .painel-batalha { width: 420px; flex: none; }
+}
+
+/* ---------- Tela do jogo ---------- */
+#telaJogo { background: #3b4a2f; flex-direction: column; align-items: center; overflow: hidden; }
+#jogo { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 520px; }
+.hud { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; color: #fff; gap: 8px; flex: none; }
+.coroas { font-weight: 800; font-size: 20px; padding: 0 10px; border-radius: 10px; }
+.coroas.inim { background: var(--vermelho); } .coroas.meu { background: var(--azul); }
+.relogio { font-weight: 800; font-size: 22px; text-align: center; line-height: 1; }
+.relogio small { display: block; font-size: 12px; color: #ffd75e; font-weight: 700; }
+.hud .pausa { background: rgba(255,255,255,.15); border: 0; border-radius: 10px; padding: 4px 10px; color: #fff; font-size: 18px; }
+#areaArena { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+#arena { display: block; border-radius: 10px; touch-action: none; box-shadow: 0 4px 0 rgba(0,0,0,.25); }
+#arena3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.carta .retrato { display: block; width: clamp(38px, 11vw, 56px); height: clamp(38px, 11vw, 56px); margin: 0 auto; }
+.proxima .mini .retrato { width: 40px; height: 40px; }
+.cg .retrato { width: 52px; height: 52px; flex: none; }
+.painel { background: #2a3322; padding: 6px 8px 10px; flex: none; color: #fff; }
+.pergunta { background: var(--papel); color: var(--tinta); border-radius: 12px; padding: 6px 10px 8px; margin-bottom: 6px; position: relative; }
+.pergunta .cab { display: flex; justify-content: space-between; font-size: 13px; color: var(--tinta-2); font-weight: 700; }
+.pergunta .txt { font-size: clamp(18px, 4.8vw, 24px); font-weight: 800; text-align: center; line-height: 1.15; margin: 2px 0 6px; min-height: 28px; }
+.opcoes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.opcoes button {
+  padding: 8px 2px; border-radius: 10px; border: 2px solid var(--tinta); background: var(--papel-2); color: var(--tinta);
+  font-weight: 800; font-size: clamp(15px, 4.2vw, 20px); box-shadow: var(--sombra); line-height: 1.1;
+}
+.opcoes button:active { transform: translateY(2px); box-shadow: none; }
+.opcoes button.certa { background: var(--verde); color: #fff; border-color: var(--verde); }
+.opcoes button.errada { background: var(--vermelho); color: #fff; border-color: var(--vermelho); }
+.opcoes button:disabled { cursor: default; }
+.retorno { position: absolute; right: 10px; top: 4px; font-weight: 800; font-size: 14px; }
+.retorno.ok { color: var(--verde); } .retorno.erro { color: var(--vermelho); }
+.mao { display: flex; gap: 6px; align-items: flex-end; }
+.proxima { width: 46px; flex: none; text-align: center; font-size: 11px; font-weight: 700; color: #cfd8b8; }
+.proxima .mini { background: #49563b; border-radius: 8px; height: 46px; display: grid; place-items: center; font-size: 26px; }
+.carta {
+  flex: 1; position: relative; border-radius: 10px; border: 3px solid #8a6d3b; background: #f7ecd0; color: #2b2210;
+  padding: 4px 2px 3px; text-align: center; min-width: 0; box-shadow: 0 3px 0 rgba(0,0,0,.35);
+}
+.carta .ic { font-size: clamp(26px, 8vw, 36px); line-height: 1.1; display: block; }
+.carta .nm { font-size: 11px; font-weight: 700; line-height: 1.05; display: block; height: 24px; overflow: hidden; }
+.carta .custo {
+  position: absolute; top: -8px; left: -6px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--roxo); color: #fff; font-weight: 800; font-size: 14px; display: grid; place-items: center; border: 2px solid #fff;
+}
+.carta.sel { border-color: #ffd23f; transform: translateY(-6px); box-shadow: 0 0 0 3px #ffd23f, 0 6px 0 rgba(0,0,0,.35); }
+.carta.cara { filter: grayscale(.85) brightness(.8); }
+.energia { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.energia .n { width: 34px; height: 34px; flex: none; border-radius: 50%; background: var(--roxo); display: grid; place-items: center; font-weight: 800; font-size: 18px; border: 2px solid #fff; }
+.barra { flex: 1; height: 16px; background: #1b2116; border-radius: 9px; overflow: hidden; position: relative; }
+.barra .enc { height: 100%; background: linear-gradient(#b46cff, #7a3fd1); width: 0; }
+.barra .marcas { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), #1b2116 calc(10% - 2px) 10%); }
+.camada { position: absolute; inset: 0; background: rgba(20,24,16,.7); display: none; align-items: center; justify-content: center; z-index: 5; padding: 16px; }
+.camada.ativa { display: flex; }
+.caixa { background: var(--papel); color: var(--tinta); border-radius: 16px; padding: 18px; width: 100%; max-width: 380px; text-align: center; }
+.caixa h2 { margin: 0 0 8px; font-size: 28px; }
+.toast { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); background: rgba(0,0,0,.75); color: #fff; padding: 6px 14px; border-radius: 10px; font-weight: 700; pointer-events: none; opacity: 0; transition: opacity .2s; white-space: nowrap; }
+.toast.v { opacity: 1; }
+
+/* ---------- Fim ---------- */
+.placar { display: flex; justify-content: center; gap: 28px; font-size: 22px; font-weight: 800; margin: 8px 0; }
+.placar .meu { color: var(--azul); } .placar .inim { color: var(--vermelho); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.stats div { border: 2px solid var(--borda); border-radius: 12px; padding: 8px 4px; }
+.stats b { display: block; font-size: 28px; line-height: 1; }
+.erros li { margin: 6px 0; } .erros .certa { color: var(--verde); font-weight: 800; } .erros .marcou { color: var(--vermelho); text-decoration: line-through; }
+table.temastab { width: 100%; border-collapse: collapse; font-size: 16px; } .temastab td { padding: 4px 6px; border-bottom: 1px solid var(--borda); }
+.temastab td:last-child { text-align: right; font-weight: 800; }
+.temastab .pill { display: inline-block; padding: 0 8px; border-radius: 9px; font-size: 13px; font-weight: 700; background: var(--papel-2); }
+.temastab .pill.jogando { background: var(--azul-claro); } .temastab .pill.fim { background: var(--verde-claro); }
+
+@media (min-width: 900px) and (min-aspect-ratio: 4/3) {
+  #jogo { max-width: 980px; display: grid; grid-template-columns: 1fr 400px; grid-template-rows: auto 1fr; column-gap: 16px; padding: 8px; }
+  .hud { grid-column: 1 / 3; }
+  .painel { border-radius: 14px; align-self: center; padding: 12px; }
+  .pergunta .txt { font-size: 26px; min-height: 64px; display: grid; place-items: center; }
+  .opcoes { grid-template-columns: repeat(2, 1fr); } .opcoes button { padding: 14px 4px; font-size: 22px; }
+  .carta .nm { font-size: 12px; }
+}
+</style>
+
+<!-- INÍCIO -->
+<section id="telaInicio" class="tela inicio ativa">
+  <canvas id="vitrine3d" aria-hidden="true"></canvas>
+  <div class="inicio-veu"></div>
+  <div class="inicio-miolo">
+    <div class="inicio-topo">
+      <div class="selo">⚔️ Contas e guerreiros ⚔️</div>
+      <h1 class="logo"><span class="logo-a">Batalha</span><span class="logo-b">Matemática</span></h1>
+      <p class="chamada">Acerte as contas, ganhe energia e derrube as torres do inimigo!</p>
+    </div>
+    <div class="painel-batalha">
+      <label for="inCodigo" class="rotulo">Código da turma</label>
+      <input id="inCodigo" maxlength="6" placeholder="ABCDEF" autocomplete="off" spellcheck="false">
+      <div class="aviso-escuro" id="avisoCodigo"></div>
+      <div class="info-turma" id="infoTurma"></div>
+      <div class="dupla-botoes">
+        <button class="bj bj-azul" id="btEntrar"><span class="bj-ic">🤖</span>Contra o robô</button>
+        <button class="bj bj-verm" id="btDuelo"><span class="bj-ic">⚔️</span>Duelo<small>contra um colega</small></button>
+      </div>
+      <div class="linha-menor">
+        <button class="bj-mini" id="btJogarLivre">🎲 Treino livre<small></small></button>
+        <button class="bj-mini" id="btComo">📖 Como jogar</button>
+        <button class="bj-mini" id="btProfessor">🍎 Professor</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROFESSOR -->
+<section id="telaProfessor" class="tela caderno">
+  <div class="miolo">
+    <button class="btn" id="btVoltarProf" style="width:auto">← Voltar</button>
+    <h2>1. Conteúdos da partida</h2>
+    <p class="sub" style="margin:0 0 8px;font-size:16px">Marque um ou mais. As perguntas são sorteadas entre os marcados. Se a turma for de um ano anterior ao indicado, o jogo usa as perguntas do ano indicado.</p>
+    <div class="temas" id="listaTemas"></div>
+    <div class="linha-acoes" style="margin-top:6px">
+      <button class="btn" id="btTodos" style="font-size:15px;padding:6px">Marcar todos</button>
+      <button class="btn" id="btNenhum" style="font-size:15px;padding:6px">Desmarcar todos</button>
+    </div>
+    <h2>2. Nível das perguntas</h2>
+    <div class="seg" id="segAno"></div>
+    <h2>3. Duração da partida</h2>
+    <div class="seg" id="segDur"></div>
+    <h2>4. Ritmo da batalha</h2>
+    <p class="sub" style="margin:0 0 8px;font-size:16px">No Calmo, os guerreiros andam mais devagar e sobra mais tempo para pensar em cada conta.</p>
+    <div class="seg" id="segRitmo"></div>
+    <h2>5. Força do robô adversário</h2>
+    <div class="seg" id="segBot"></div>
+    <h2>Código para a turma</h2>
+    <div class="cartao" style="text-align:center">
+      <div class="codigo-grande" id="codigoGerado">—</div>
+      <div style="font-size:15px;color:var(--tinta-2)">Escreva no quadro. O aluno digita na tela inicial e joga só com esses conteúdos.</div>
+    </div>
+    <div class="aviso" id="avisoProf"></div>
+    <button class="btn" id="btAmostra">👀 Ver exemplos de perguntas</button>
+    <ol class="amostra" id="amostra"></ol>
+    <button class="btn prim" id="btTestar">▶ Testar uma partida</button>
+    <button class="btn" id="btAbrirSala">⚔️ Abrir sala de duelos<small>Os alunos entram com o código acima e você sorteia as duplas</small></button>
+  </div>
+</section>
+
+<!-- SALA DO ALUNO -->
+<section id="telaSala" class="tela caderno">
+  <div class="miolo">
+    <button class="btn" id="btSairSala" style="width:auto">← Sair da sala</button>
+    <h2>Sala de duelos <span id="salaCodigo" style="color:var(--azul)"></span></h2>
+    <div class="cartao" id="caixaNome">
+      <label for="inNome"><b>Seu nome</b></label>
+      <div class="codigo-turma" style="margin-top:6px">
+        <input id="inNome" maxlength="16" placeholder="Primeiro nome" autocomplete="off" style="letter-spacing:0;text-transform:none">
+        <button class="btn prim" id="btEntrarSala">Entrar</button>
+      </div>
+      <div class="aviso" id="avisoSala"></div>
+    </div>
+    <div class="cartao" id="caixaEspera" hidden>
+      <div id="salaStatus" style="font-size:20px;font-weight:700">Esperando o professor sortear as duplas…</div>
+      <div id="salaQtd" style="color:var(--tinta-2)"></div>
+      <ul id="salaLista" class="amostra"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- SALA DO PROFESSOR -->
+<section id="telaSalaProf" class="tela caderno">
+  <div class="miolo">
+    <button class="btn" id="btFecharSala" style="width:auto">← Fechar a sala</button>
+    <h2>Sala de duelos</h2>
+    <div class="cartao" style="text-align:center">
+      <div style="font-size:15px;color:var(--tinta-2)">Código para os alunos</div>
+      <div class="codigo-grande" id="profCodigo">—</div>
+      <div id="profConfig" style="font-size:14px;color:var(--tinta-2)"></div>
+    </div>
+    <button class="btn prim" id="btSortear">🎲 Sortear duplas e começar<small id="profEsperando">Ninguém esperando ainda</small></button>
+    <div class="aviso" id="avisoProfSala"></div>
+    <h2>Alunos na sala</h2>
+    <table class="temastab" id="tabSala"></table>
+  </div>
+</section>
+
+<!-- COMO JOGAR -->
+<section id="telaComo" class="tela caderno">
+  <div class="miolo">
+    <button class="btn" id="btVoltarComo" style="width:auto">← Voltar</button>
+    <h2>Como jogar</h2>
+    <div class="cartao" style="font-size:17px;line-height:1.35">
+      <p style="margin-top:0">🎯 <b>Objetivo:</b> derrubar as torres vermelhas. Cada torre vale 👑 1 coroa. Derrubou a torre do meio, ganhou na hora (3 coroas).</p>
+      <p>⚡ <b>Energia:</b> enche devagar sozinha. Cada resposta certa dá <b>+2</b>. A cada três certas seguidas, <b>+1</b> de bônus. Errou? A pergunta trava por 2 segundos.</p>
+      <p>🃏 <b>Cartas:</b> toque numa carta e depois no seu lado da arena (a parte de baixo) para colocá-la. O Trovão pode ir em qualquer lugar.</p>
+      <p style="margin-bottom:0">⏱️ <b>No último minuto</b> a energia enche em dobro. No fim do tempo, ganha quem tiver mais coroas.</p>
+    </div>
+    <h2>As cartas</h2>
+    <div class="cartas-guia" id="guiaCartas"></div>
+  </div>
+</section>
+
+<!-- JOGO -->
+<section id="telaJogo" class="tela">
+  <div id="jogo">
+    <div class="hud">
+      <span class="coroas inim" title="Coroas do robô">👑 <span id="crInim">0</span></span>
+      <div class="relogio"><span id="tempo">3:00</span><small id="dobro"></small></div>
+      <span style="display:flex;gap:6px;align-items:center">
+        <span class="coroas meu" title="Suas coroas">👑 <span id="crMeu">0</span></span>
+        <button class="pausa fsBtn" aria-label="Tela cheia" hidden><span class="circle"></span></button>
+        <button class="pausa" id="btPausa" aria-label="Pausar">⏸</button>
+      </span>
+    </div>
+    <div id="areaArena"><canvas id="arena"></canvas><canvas id="arena3d"></canvas><div class="toast" id="toast"></div></div>
+    <div class="painel">
+      <div class="pergunta">
+        <div class="cab"><span id="temaAtual">Tema</span><span id="seq"></span></div>
+        <span class="retorno" id="retorno"></span>
+        <div class="txt" id="txtPergunta">…</div>
+        <div class="opcoes" id="opcoes"></div>
+      </div>
+      <div class="mao">
+        <div class="proxima">Próxima<div class="mini" id="proxima"></div></div>
+        <div class="mao" id="mao" style="flex:1"></div>
+      </div>
+      <div class="energia"><div class="n" id="enNum">0</div><div class="barra"><div class="enc" id="enBarra"></div><div class="marcas"></div></div></div>
+    </div>
+  </div>
+  <div class="camada" id="camPausa"><div class="caixa">
+    <h2>Pausado</h2>
+    <button class="btn prim" id="btContinuar" style="text-align:center">Continuar</button>
+    <button class="btn" id="btDesistir" style="text-align:center">Sair da partida</button>
+  </div></div>
+  <div class="camada" id="camInicio"><div class="caixa"><h2 id="contagem">3</h2><div>Resolva as contas para ganhar energia!</div></div></div>
+</section>
+
+<!-- FIM -->
+<section id="telaFim" class="tela caderno">
+  <div class="miolo">
+    <h1 class="titulo" id="fimTitulo" style="font-size:52px">Vitória!</h1>
+    <div class="placar"><span class="meu">Você 👑 <span id="fimMeu">0</span></span><span class="inim"><span id="fimNomeInim">Robô</span> 👑 <span id="fimInim">0</span></span></div>
+    <div class="stats">
+      <div><b id="stCertas">0</b>certas</div>
+      <div><b id="stErradas">0</b>erradas</div>
+      <div><b id="stPct">0%</b>de acerto</div>
+    </div>
+    <h2>Por conteúdo</h2>
+    <table class="temastab" id="tabTemas"></table>
+    <h2 id="tituloErros">Para revisar</h2>
+    <ul class="erros" id="listaErros"></ul>
+    <div class="linha-acoes">
+      <button class="btn prim" id="btDeNovo">Jogar de novo</button>
+      <button class="btn prim" id="btVoltarSala" hidden>Voltar à sala</button>
+      <button class="btn" id="btMenu">Menu</button>
+    </div>
+  </div>
+</section>
+
+<!-- Marca d'água e tela cheia: o mesmo padrão dos outros jogos do tiodanilo.com.br -->
+<button class="tool fsBtn fs-flutuante" aria-label="Tela cheia" hidden><span class="circle"></span><span class="lbl">Tela cheia</span></button>
+<img class="wm" alt="Tio Danilo" src="data:image/png;base64,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">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="perguntas.js"></script>
+<script src="render3d.js"></script>
+<script src="jogo.js"></script>
+<script src="duelo.js"></script>
+
+</body>
+</html>
