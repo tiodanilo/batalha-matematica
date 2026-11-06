@@ -63,9 +63,19 @@
     cavaleiro: { nome: 'Cavaleiro', icone: '🐎', custo: 4, n: 1, hp: 1150, dmg: 130, hit: 1.2, range: 0.7, speed: 1.35, radius: 0.6, desc: 'Montado a cavalo: rápido e resistente.' },
     balista: { nome: 'Balista', icone: '🎯', custo: 3, tipo: 'predio', hp: 900, dmg: 70, hit: 0.8, range: 5.5, vida: 30, radius: 0.8, desc: 'Defesa fixa. Dura 30 segundos.' },
     trovao: { nome: 'Trovão', icone: '⚡', custo: 4, tipo: 'feitico', dmg: 350, raio: 2.5, desc: 'Raio que atinge tudo numa área. Pode ir em qualquer lugar.' },
+    bombardeiro: { nome: 'Bombardeiro', icone: '💣', custo: 3, n: 1, hp: 340, dmg: 100, hit: 1.6, range: 3.8, speed: 1.0, radius: 0.45, proj: true, splash: 2.0, desc: 'Joga bombas de perto que acertam um grupo.' },
+    curandeira: { nome: 'Curandeira', icone: '💚', custo: 4, n: 1, hp: 520, dmg: 35, hit: 1.2, range: 3, speed: 1.0, radius: 0.48, proj: true, cura: 70, raioCura: 3, ritmoCura: 1.5, desc: 'Cura os guerreiros do seu lado que estão perto dela.' },
+    flechas: { nome: 'Chuva de Flechas', icone: '☔', custo: 3, tipo: 'feitico', dmg: 170, raio: 3.5, desc: 'Muitas flechas numa área grande. Ótima contra grupos.' },
+    barricada: { nome: 'Barricada', icone: '🪵', custo: 2, tipo: 'predio', hp: 1500, dmg: 0, hit: 1, range: 0, vida: 35, radius: 1.0, desc: 'Muro de madeira que atrai os inimigos. Não ataca.' },
   };
+  // A ORDEM desta lista não pode mudar: o duelo manda o número de cada carta.
   const BARALHO = Object.keys(CARTAS);
   BARALHO.forEach(k => (CARTAS[k].key = k));
+  const BARALHO_PADRAO = ['guerreiro', 'besteiros', 'golem', 'lanceiros', 'feiticeira', 'cavaleiro', 'balista', 'trovao'];
+  const baralhoValido = b => Array.isArray(b) && b.length === 8 && new Set(b).size === 8 && b.every(k => CARTAS[k]);
+  let baralhoAluno = guardar.ler('arena-baralho');
+  if (!baralhoValido(baralhoAluno)) baralhoAluno = BARALHO_PADRAO.slice();
+  const baralhoRobo = () => BARALHO.slice().sort(() => Math.random() - 0.5).slice(0, 8);
 
   /* Desenho 3D, se o aparelho suportar; senão, o desenho 2D abaixo. */
   const R3 = window.Render3D && window.Render3D.iniciar(document.getElementById('arena3d')) ? window.Render3D : null;
@@ -143,8 +153,8 @@
     return { kind: 'torre', team, x, y, rei, hp: rei ? 3000 : 1800, max: rei ? 3000 : 1800, dmg: rei ? 80 : 60,
       hit: rei ? 1.0 : 0.8, range: 7, radius: rei ? 1.5 : 1.1, cd: 0, ativo: !rei, alvo: null, flash: 0, proj: true };
   }
-  function novaMao() {
-    const b = BARALHO.slice().sort(() => Math.random() - 0.5);
+  function novaMao(lista) {
+    const b = (baralhoValido(lista) ? lista : BARALHO_PADRAO).slice().sort(() => Math.random() - 0.5);
     return { mao: b.slice(0, 4), fila: b.slice(4) };
   }
   function novaPartida(c) {
@@ -154,7 +164,7 @@
       ents: [torre(0, 3.5, 25.5), torre(0, 14.5, 25.5), torre(0, 9, 28.2, true),
         torre(1, 3.5, 4.5), torre(1, 14.5, 4.5), torre(1, 9, 1.8, true)],
       proj: [], feiticos: [], efeitos: [],
-      maos: [novaMao(), novaMao()], sel: null, mouse: null,
+      maos: [novaMao(baralhoAluno), novaMao(baralhoRobo())], sel: null, mouse: null,
       ia: { t: 2 },
       q: null, travado: 0, seq: 0, certas: 0, erradas: 0, porTema: {}, erros: [],
       fimT: 0, vencedor: null, podeColocar,
@@ -237,9 +247,9 @@
     if (J.en[team] < def.custo) return 'energia';
     if (!podeColocar(team, def, x, y)) return 'lugar';
     J.en[team] -= def.custo;
-    if (def.tipo === 'feitico') J.feiticos.push({ x, y, team, t: 0.7, raio: def.raio, dmg: def.dmg });
+    if (def.tipo === 'feitico') J.feiticos.push({ x, y, team, t: 0.7, raio: def.raio, dmg: def.dmg, key: k });
     else if (def.tipo === 'predio') J.ents.push({ kind: 'pred', team, x, y, hp: def.hp, max: def.hp, dmg: def.dmg, hit: def.hit,
-      range: def.range, radius: def.radius, vida: def.vida, cd: 0, proj: true, icone: def.icone, spawn: 1, flash: 0 });
+      range: def.range, radius: def.radius, vida: def.vida, cd: 0, proj: true, icone: def.icone, spawn: 1, flash: 0, def });
     else {
       const offs = def.n === 1 ? [[0, 0]] : def.n === 2 ? [[-0.55, 0], [0.55, 0]] : [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]];
       offs.forEach(([dx, dy]) => J.ents.push({
@@ -297,7 +307,8 @@
     J.ents.forEach(t => { if (t.kind === 'torre' && t.rei && t.team === e.team) t.ativo = true; });
   }
   function atacar(a, alvo) {
-    if (a.proj) J.proj.push({ x: a.x, y: a.y, alvo, tx: alvo.x, ty: alvo.y, dmg: a.dmg, splash: a.splash || 0, team: a.team, vel: 11 });
+    if (a.proj) J.proj.push({ x: a.x, y: a.y, alvo, tx: alvo.x, ty: alvo.y, dmg: a.dmg, splash: a.splash || 0, team: a.team, vel: 11,
+      k: a.def ? a.def.key : a.kind }); // k: quem atirou (bomba, magia, flecha...), só para o desenho
     else { ferir(alvo, a.dmg); J.efeitos.push({ tipo: 'hit', x: (a.x + alvo.x) / 2, y: (a.y + alvo.y) / 2, t: 0, max: 0.18 }); }
   }
   function dano(team, x, y, alvo, qtd, splash) {
@@ -308,6 +319,17 @@
   }
   function atualizarUnid(u, dt) {
     if (u.spawn > 0) { u.spawn -= dt; return; }
+    if (u.def.cura) { // Curandeira: de tempos em tempos cura quem é do seu lado e está perto
+      u.tcura = (u.tcura || 0) - dt;
+      if (u.tcura <= 0) {
+        u.tcura = u.def.ritmoCura;
+        let curou = false;
+        for (const e of J.ents) if (e.kind === 'unid' && e.team === u.team && e.hp > 0 && e.hp < e.max && dist(u, e) <= u.def.raioCura) {
+          e.hp = Math.min(e.max, e.hp + u.def.cura); curou = true;
+        }
+        if (curou) J.efeitos.push({ tipo: 'cura', x: u.x, y: u.y, t: 0, max: 0.6, r: u.def.raioCura });
+      }
+    }
     u.cd = Math.max(0, u.cd - dt);
     u.retarget -= dt;
     if (!vivo(u.alvo) || (!u.preso && u.retarget <= 0)) { u.alvo = adquirir(u); u.retarget = 0.3; }
@@ -325,6 +347,7 @@
       t.hp -= t.max / t.vida * dt; if (t.hp <= 0) { t.hp = 0; return; }
     }
     if (t.kind === 'torre' && !t.ativo) return;
+    if (!t.dmg) return; // Barricada: só segura os inimigos
     t.cd = Math.max(0, t.cd - dt);
     const noAlcance = e => vivo(e) && e.team !== t.team && e.kind !== 'torre' && dist(t, e) - e.radius <= t.range;
     if (!noAlcance(t.alvo)) {
@@ -360,7 +383,7 @@
     const cartas = m.mao.map((k, i) => ({ k, i, c: CARTAS[k] }));
     const ameacas = J.ents.filter(e => e.team === 0 && e.kind === 'unid' && e.hp > 0 && e.y < 18);
     if (ameacas.length) {
-      const bor = cartas.find(o => o.k === 'trovao');
+      const bor = cartas.find(o => o.c.tipo === 'feitico');
       if (bor && en >= bor.c.custo) for (const a of ameacas) {
         const viz = ameacas.filter(b => dist(a, b) < 2.5).length;
         if (viz >= 3 || (viz >= 2 && Math.random() < 0.25)) { jogar(1, bor.i, a.x, a.y - 0.5); return; }
@@ -416,7 +439,7 @@
         f.fim = true;
         for (const e of J.ents) if (e.team !== f.team && e.hp > 0 && Math.hypot(e.x - f.x, e.y - f.y) <= f.raio + e.radius)
           ferir(e, e.kind === 'torre' ? f.dmg * 0.35 : f.dmg);
-        J.efeitos.push({ tipo: 'raio', x: f.x, y: f.y, t: 0, max: 0.45, r: f.raio, cor: '#ffe14d' });
+        J.efeitos.push({ tipo: f.key === 'flechas' ? 'flechas' : 'raio', x: f.x, y: f.y, t: 0, max: f.key === 'flechas' ? 0.6 : 0.45, r: f.raio, cor: '#ffe14d' });
         if (J.estado === 'fim') return;
       }
     }
@@ -569,7 +592,7 @@
     }
     for (const ef of J.efeitos) {
       ef.t += dt; const k = ef.t / ef.max;
-      if (ef.tipo === 'boom' || ef.tipo === 'anel' || ef.tipo === 'raio') {
+      if (ef.tipo === 'boom' || ef.tipo === 'anel' || ef.tipo === 'raio' || ef.tipo === 'flechas' || ef.tipo === 'cura') {
         ctx.globalAlpha = 1 - k; ctx.strokeStyle = ef.cor || '#ffb347'; ctx.lineWidth = S * 0.2;
         ctx.beginPath(); ctx.arc(ef.x * S, ef.y * S, Math.max(0.1, ef.r * S * (0.4 + 0.6 * k)), 0, Math.PI * 2); ctx.stroke();
         ctx.globalAlpha = 1;
@@ -670,19 +693,72 @@
   /* ---------------- Botões dos menus ---------------- */
   let cfgPartida = null;
   function iniciar(c) { cfgPartida = c; novaPartida(c); }
+
+  /* Velocidade escolhida pelo aluno (contra o robô e no treino). No duelo vale a do professor. */
+  let ritmoAluno = guardar.ler('arena-ritmo');
+  if (![0, 1, 2].includes(ritmoAluno)) ritmoAluno = cfg.ritmo || 0;
+  const ROTULO_RITMO = [['🐢 Calmo', 'mais tempo'], ['🚶 Normal', 'equilibrado'], ['🔥 Rápido', 'desafio']];
+  function desenharRitmoAluno() {
+    const box = $('segRitmoAluno'); box.innerHTML = '';
+    ROTULO_RITMO.forEach(([nome, dica], i) => {
+      const b = document.createElement('button');
+      b.innerHTML = `${nome}<small>${dica}</small>`;
+      b.setAttribute('aria-pressed', i === ritmoAluno);
+      b.onclick = () => { ritmoAluno = i; guardar.gravar('arena-ritmo', i); desenharRitmoAluno(); };
+      box.appendChild(b);
+    });
+  }
+  desenharRitmoAluno();
+  const comRitmoDoAluno = c => Object.assign({}, c, { ritmo: ritmoAluno });
+
   $('btEntrar').onclick = () => {
     const c = decodificar($('inCodigo').value);
     if (!c) { $('avisoCodigo').textContent = 'Código não encontrado. Confira com o professor.'; return; }
     $('avisoCodigo').textContent = '';
-    iniciar(c);
+    iniciar(comRitmoDoAluno(c));
   };
   $('inCodigo').addEventListener('input', () => {
     const c = decodificar($('inCodigo').value);
-    $('infoTurma').textContent = c ? descreverCfg(c) : '';
+    $('infoTurma').textContent = c ? descreverCfg(c).replace(/ · ritmo [^·]+/, '') : '';
     $('avisoCodigo').textContent = '';
+    if (c) { ritmoAluno = c.ritmo || 0; desenharRitmoAluno(); } // começa com a velocidade que o professor escolheu
   });
   $('inCodigo').addEventListener('keydown', e => { if (e.key === 'Enter') $('btEntrar').click(); });
-  $('btJogarLivre').onclick = () => iniciar(Object.assign({}, cfg));
+  $('btJogarLivre').onclick = () => iniciar(comRitmoDoAluno(cfg));
+
+  /* Meu baralho: o aluno escolhe 8 das 12 cartas */
+  let escolha = [];
+  const NOVAS = ['bombardeiro', 'curandeira', 'flechas', 'barricada'];
+  function desenharBaralho() {
+    const grade = $('gradeCartas'); grade.innerHTML = '';
+    BARALHO.forEach(k => {
+      const c = CARTAS[k], b = document.createElement('button'), dentro = escolha.includes(k);
+      b.className = 'carta-esc'; b.setAttribute('aria-pressed', dentro);
+      b.innerHTML = `<span class="custo">${c.custo}</span>${NOVAS.includes(k) ? '<span class="novo">NOVA</span>' : ''}` +
+        `<span class="marca">${dentro ? '✅' : ''}</span>${arte(k)}<b>${c.nome}</b><span class="d">${c.desc}</span>`;
+      b.onclick = () => {
+        if (dentro) escolha = escolha.filter(x => x !== k);
+        else if (escolha.length < 8) escolha.push(k);
+        else { $('dicaBaralho').textContent = 'Seu baralho já tem 8 cartas. Tire uma antes de colocar outra.'; return; }
+        desenharBaralho();
+      };
+      grade.appendChild(b);
+    });
+    const n = escolha.length, media = n ? escolha.reduce((t, k) => t + CARTAS[k].custo, 0) / n : 0;
+    $('contaBaralho').textContent = n + '/8'; $('contaBaralho').classList.toggle('ok', n === 8);
+    $('dicaBaralho').innerHTML = n === 8
+      ? `Baralho completo! Custo médio: <b>${media.toFixed(1).replace('.', ',')}</b> ⚡`
+      : `Escolha mais <b>${8 - n}</b> ${8 - n === 1 ? 'carta' : 'cartas'}. Toque numa carta para colocar ou tirar.`;
+    $('btSalvarBaralho').disabled = n !== 8; $('btSalvarBaralho').style.opacity = n === 8 ? 1 : 0.5;
+  }
+  $('btCartas').onclick = () => { escolha = baralhoAluno.slice(); desenharBaralho(); mostrar('telaCartas'); };
+  $('btVoltarCartas').onclick = () => mostrar('telaInicio');
+  $('btBaralhoPadrao').onclick = () => { escolha = BARALHO_PADRAO.slice(); desenharBaralho(); };
+  $('btSalvarBaralho').onclick = () => {
+    if (!baralhoValido(escolha)) return;
+    baralhoAluno = escolha.slice(); guardar.gravar('arena-baralho', baralhoAluno);
+    mostrar('telaInicio');
+  };
   $('btProfessor').onclick = () => { montarProfessor(); mostrar('telaProfessor'); };
   $('btComo').onclick = () => mostrar('telaComo');
   $('btVoltarProf').onclick = $('btVoltarComo').onclick = () => mostrar('telaInicio');
@@ -734,7 +810,8 @@
 
   // Para o modo duelo (duelo.js)
   window.Arena = {
-    CARTAS, BARALHO, codificar, decodificar, descreverCfg, get cfg() { return cfg; }, mostrar, renderMao, mostrarFim, aviso, podeColocar, jogar, terminar,
+    CARTAS, BARALHO, codificar, decodificar, descreverCfg, get cfg() { return cfg; },
+    get baralhoAluno() { return baralhoAluno.slice(); }, novaMao, baralhoValido, mostrar, renderMao, mostrarFim, aviso, podeColocar, jogar, terminar,
     get J() { return J; }, set J(v) { J = v; },
     novaPartida(c, online, nomeInim) { novaPartida(c); J.online = online || null; J.nomeInim = nomeInim || null; cfgPartida = c; $('btPausa').hidden = !!online; return J; },
   };

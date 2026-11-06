@@ -105,7 +105,8 @@ body:has(#telaJogo.ativa) .wm { bottom: auto; top: calc(58px + env(safe-area-ins
 .tool .lbl { font-size: 11px; font-weight: 800; letter-spacing: .05em; line-height: 1; text-transform: uppercase; color: var(--tinta); }
 .fs-flutuante { position: fixed; z-index: 30; top: max(12px, env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); }
 .fs-flutuante[hidden] { display: none; }
-body:has(#telaJogo.ativa) .fs-flutuante { display: none; }
+body:has(#telaJogo.ativa) .fs-flutuante, body:has(#telaCartas.ativa) .fs-flutuante { display: none; }
+.grade-cartas { padding-bottom: 36px; }
 body:has(#telaInicio.ativa) .fs-flutuante .lbl { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
 body:has(#telaInicio.ativa) .selo { margin-right: 52px; }
 @media (max-width: 600px) { .tool .circle { width: 40px; height: 40px; } .tool svg { width: 22px; height: 22px; } }
@@ -182,7 +183,41 @@ body:has(#telaInicio.ativa) .selo { margin-right: 52px; }
 .bj-verm { background: linear-gradient(180deg, #ff8a6b, #d6453d 60%, #8f2620); box-shadow: 0 6px 0 #4f120e, 0 8px 14px rgba(0,0,0,.4); }
 .bj:active { transform: translateY(5px); box-shadow: 0 1px 0 #000; }
 .bj:focus-visible, .bj-mini:focus-visible { outline: 3px solid var(--ouro-2); outline-offset: 3px; }
-.linha-menor { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.linha-menor { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.ritmo-aluno { display: flex; flex-direction: column; gap: 6px; }
+.seg-escuro { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.seg-escuro button {
+  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 15px; color: #fff; cursor: pointer;
+  background: rgba(255,255,255,.08); border: 2px solid rgba(247,197,49,.35); border-radius: 12px; padding: 6px 4px; line-height: 1.1;
+}
+.seg-escuro button[aria-pressed="true"] { background: var(--ouro-2); color: #2a1606; border-color: var(--ouro-1); }
+.seg-escuro button small { display: block; font-size: 11px; font-weight: 600; opacity: .85; }
+/* Meu baralho */
+.cartas-miolo {
+  position: relative; z-index: 1; width: 100%; max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px;
+  padding-block: max(14px, env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overflow-y: auto;
+}
+.cartas-topo { display: flex; align-items: center; gap: 10px; }
+.cartas-titulo { flex: 1; margin: 0; font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 28px; color: var(--ouro-1); text-transform: uppercase; letter-spacing: 1px; }
+.cartas-conta { font-family: 'Lilita One', sans-serif; font-size: 22px; color: #fff; background: rgba(0,0,0,.4); border-radius: 12px; padding: 2px 10px; }
+.cartas-conta.ok { color: #7dffa0; }
+.cartas-dica { margin: 0; color: #dfe6ff; font-size: 15px; }
+.grade-cartas { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.carta-esc {
+  position: relative; text-align: left; cursor: pointer; border-radius: 14px; padding: 8px; color: #2b2210;
+  background: #f7ecd0; border: 3px solid #8a6d3b; box-shadow: 0 4px 0 rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 2px;
+  font-family: 'Baloo 2', sans-serif;
+}
+.carta-esc .retrato, .carta-esc .ic { width: 64px; height: 64px; margin: 0 auto; font-size: 44px; display: block; text-align: center; }
+.carta-esc b { font-size: 15px; line-height: 1.1; }
+.carta-esc span.d { font-size: 12px; line-height: 1.15; color: #5a4a2a; }
+.carta-esc .custo { position: absolute; top: -8px; left: -6px; width: 26px; height: 26px; border-radius: 50%; background: var(--roxo); color: #fff; font-weight: 800; display: grid; place-items: center; border: 2px solid #fff; }
+.carta-esc .marca { position: absolute; top: 6px; right: 8px; font-size: 20px; }
+.carta-esc[aria-pressed="false"] { filter: grayscale(.8) brightness(.75); }
+.carta-esc[aria-pressed="true"] { border-color: #ffd23f; box-shadow: 0 0 0 3px #ffd23f, 0 4px 0 rgba(0,0,0,.35); }
+.carta-esc .novo { position: absolute; top: -9px; right: -6px; background: #2e9e5b; color: #fff; font-size: 11px; font-weight: 800; border-radius: 8px; padding: 1px 6px; border: 2px solid #fff; }
 .bj-mini {
   font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 14px; color: var(--ouro-1); cursor: pointer;
   background: rgba(255,255,255,.06); border: 2px solid rgba(247,197,49,.45); border-radius: 12px; padding: 8px 4px; line-height: 1.1;
@@ -295,15 +330,38 @@ table.temastab { width: 100%; border-collapse: collapse; font-size: 16px; } .tem
       <input id="inCodigo" maxlength="6" placeholder="ABCDEF" autocomplete="off" spellcheck="false">
       <div class="aviso-escuro" id="avisoCodigo"></div>
       <div class="info-turma" id="infoTurma"></div>
+      <div class="ritmo-aluno">
+        <span class="rotulo">Velocidade da batalha</span>
+        <div class="seg-escuro" id="segRitmoAluno" role="group" aria-label="Velocidade da batalha"></div>
+      </div>
       <div class="dupla-botoes">
         <button class="bj bj-azul" id="btEntrar"><span class="bj-ic">🤖</span>Contra o robô</button>
         <button class="bj bj-verm" id="btDuelo"><span class="bj-ic">⚔️</span>Duelo<small>contra um colega</small></button>
       </div>
       <div class="linha-menor">
+        <button class="bj-mini" id="btCartas">🃏 Meu baralho</button>
         <button class="bj-mini" id="btJogarLivre">🎲 Treino livre<small></small></button>
         <button class="bj-mini" id="btComo">📖 Como jogar</button>
         <button class="bj-mini" id="btProfessor">🍎 Professor</button>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- MEU BARALHO -->
+<section id="telaCartas" class="tela inicio">
+  <div class="inicio-veu" style="background:rgba(8,12,30,.6)"></div>
+  <div class="cartas-miolo">
+    <div class="cartas-topo">
+      <button class="bj-mini" id="btVoltarCartas" style="width:auto;padding:8px 14px">← Voltar</button>
+      <h2 class="cartas-titulo">Meu baralho</h2>
+      <span class="cartas-conta" id="contaBaralho">8/8</span>
+    </div>
+    <p class="cartas-dica" id="dicaBaralho">Toque nas cartas para montar um baralho com 8. Custo médio: <b id="mediaBaralho">3,5</b> ⚡</p>
+    <div class="grade-cartas" id="gradeCartas"></div>
+    <div class="linha-menor" style="grid-template-columns:1fr 1fr">
+      <button class="bj-mini" id="btBaralhoPadrao">↺ Baralho inicial</button>
+      <button class="bj bj-azul" id="btSalvarBaralho" style="font-size:18px;padding:10px 6px">✓ Pronto</button>
     </div>
   </div>
 </section>

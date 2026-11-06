@@ -9,7 +9,7 @@
   const r1 = v => Math.round(v * 10) / 10;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const COR_AZUL = '#2f6fd6', COR_VERM = '#d6453d';
-  const EFEITOS = ['boom', 'hit', 'anel', 'raio', 'txt'], DURACAO = [0.5, 0.18, 0.3, 0.45, 1.5];
+  const EFEITOS = ['boom', 'hit', 'anel', 'raio', 'txt', 'cura', 'flechas'], DURACAO = [0.5, 0.18, 0.3, 0.45, 1.5, 0.6, 0.6];
   // posição das torres do anfitrião (0..5) na visão espelhada do convidado
   const TORRE_ESPELHO = [4, 3, 5, 1, 0, 2];
 
@@ -170,6 +170,7 @@
 
     function lerConvidado(pres) {
       if (!pres || on.robo) return;
+      if (!on.barOk && A.baralhoValido(pres.bar)) { on.barOk = true; J.maos[1] = A.novaMao(pres.bar); } // baralho do colega
       if (typeof pres.g === 'number' && pres.g > on.ganhoVisto) {
         const ganho = Math.min(pres.g - on.ganhoVisto, 6); // no máximo o de duas respostas por vez
         on.ganhoVisto = pres.g;
@@ -201,7 +202,7 @@
         const g = golpes.get(e) || [e.cd || 0, 0];
         if ((e.cd || 0) > g[0] + 0.01) g[1]++;
         g[0] = e.cd || 0; golpes.set(e, g);
-        const chave = e.kind === 'pred' ? 'balista' : e.def.key;
+        const chave = e.def ? e.def.key : 'balista';
         u.push([idDe(e), A.BARALHO.indexOf(chave), e.team, r1(e.x), r1(e.y), Math.max(0, Math.round(e.hp)),
           e.spawn > 0 ? 1 : 0, g[1], e.alvo && e.alvo.hp > 0 ? idDe(e.alvo) : 0, e.preso ? 1 : 0]);
       }
@@ -209,8 +210,8 @@
         t: r1(J.tempo), c: J.coroas.slice(), est: J.estado, ct: r1(J.contagem), v: J.vencedor,
         e1: r1(J.en[1]), m1: J.maos[1].mao.slice(), f1: J.maos[1].fila[0], g1: on.ganhoVisto, rqv: on.rqVisto,
         tw, u,
-        p: J.proj.slice(0, 24).map(p => [idDe(p), r1(p.x), r1(p.y), r1(p.tx), r1(p.ty), p.splash ? 1 : 0]),
-        f: J.feiticos.map(f => [idDe(f), r1(f.x), r1(f.y), r1(f.t), f.raio]),
+        p: J.proj.slice(0, 24).map(p => [idDe(p), r1(p.x), r1(p.y), r1(p.tx), r1(p.ty), p.splash ? 1 : 0, A.BARALHO.indexOf(p.k)]),
+        f: J.feiticos.map(f => [idDe(f), r1(f.x), r1(f.y), r1(f.t), f.raio, A.BARALHO.indexOf(f.key)]),
         x: J.efeitos.slice(-12).map(ef => [idDe(ef), EFEITOS.indexOf(ef.tipo), r1(ef.x), r1(ef.y), r1(ef.r || 0), ef.cor === COR_AZUL ? 0 : 1]),
       };
       // presença tem limite de 4 KB: corta o que é menos importante primeiro
@@ -238,7 +239,8 @@
     const mapa = new Map(), projMapa = new Map(), feitMapa = new Map();
     let efVistos = new Set(), maoChave = '', torresMapeadas = false, acabou = false;
 
-    const enviar = () => d.dr.presence({ papel: 'jogador', nome: meuNome, g: on.ganho, rq: on.rqs }).catch(() => {});
+    const meuBaralho = A.baralhoAluno;
+    const enviar = () => d.dr.presence({ papel: 'jogador', nome: meuNome, g: on.ganho, rq: on.rqs, bar: meuBaralho }).catch(() => {});
     on.aoAcertar = ganho => { on.ganho += ganho; J.en[0] = Math.min(10, J.en[0] + ganho); enviar(); };
     on.aoJogar = (idx, x, y) => {
       if (J.estado !== 'jogando') return 'lugar';
@@ -316,15 +318,15 @@
       for (const [id, e] of mapa) if (e.kind !== 'torre' && !vistos.has(e)) mapa.delete(id);
       // flechas, magias e feitiços
       const np = new Map();
-      J.proj = (Array.isArray(s.p) ? s.p : []).map(([id, x, y, tx, ty, sp]) => {
+      J.proj = (Array.isArray(s.p) ? s.p : []).map(([id, x, y, tx, ty, sp, ki]) => {
         const p = projMapa.get(id) || { x: 18 - x, y: 30 - y };
-        p.ax = 18 - x; p.ay = 30 - y; p.tx = 18 - tx; p.ty = 30 - ty; p.splash = sp ? 1.5 : 0;
+        p.ax = 18 - x; p.ay = 30 - y; p.tx = 18 - tx; p.ty = 30 - ty; p.splash = sp ? 1.5 : 0; p.k = A.BARALHO[ki] || 'torre';
         np.set(id, p); return p;
       });
       projMapa.clear(); np.forEach((v, k) => projMapa.set(k, v));
       const nf = new Map();
-      J.feiticos = (Array.isArray(s.f) ? s.f : []).map(([id, x, y, t, raio]) => {
-        const f = feitMapa.get(id) || {}; Object.assign(f, { x: 18 - x, y: 30 - y, t, raio }); nf.set(id, f); return f;
+      J.feiticos = (Array.isArray(s.f) ? s.f : []).map(([id, x, y, t, raio, ki]) => {
+        const f = feitMapa.get(id) || {}; Object.assign(f, { x: 18 - x, y: 30 - y, t, raio, key: A.BARALHO[ki] || 'trovao' }); nf.set(id, f); return f;
       });
       feitMapa.clear(); nf.forEach((v, k) => feitMapa.set(k, v));
       if (Array.isArray(s.x)) {
