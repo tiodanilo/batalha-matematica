@@ -28,6 +28,7 @@
   --linha: #2f3850; --margem: #6b3a3a; --borda: #3a4258; --sombra: 0 3px 0 rgba(0,0,0,.4); color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body {
   background: var(--papel); color: var(--tinta);
@@ -192,6 +193,90 @@ body:has(#telaInicio.ativa) .selo { margin-right: 52px; }
 }
 .seg-escuro button[aria-pressed="true"] { background: var(--ouro-2); color: #2a1606; border-color: var(--ouro-1); }
 .seg-escuro button small { display: block; font-size: 11px; font-weight: 600; opacity: .85; }
+/* Perfil, moedas e baús na tela de início */
+.perfil-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.chip-perfil {
+  font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 15px; color: #fff; cursor: pointer; min-width: 0;
+  background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.25); border-radius: 999px; padding: 3px 12px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.chip-moedas { font-family: 'Lilita One', sans-serif; font-size: 18px; color: #ffe27a; background: rgba(0,0,0,.35); border-radius: 999px; padding: 2px 12px; flex: none; }
+.chip-moedas b { font-weight: 400; }
+.baus-linha { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.vaga-bau {
+  height: 50px; border-radius: 12px; border: 2px dashed rgba(255,255,255,.22); background: rgba(0,0,0,.2);
+  display: grid; place-items: center; color: rgba(255,255,255,.4); font-size: 11px; font-weight: 700; font-family: 'Baloo 2', sans-serif; cursor: default; padding: 0;
+}
+.vaga-bau.cheia { border: 2px solid var(--ouro-2); background: rgba(255,210,63,.12); cursor: pointer; animation: pulsar 1.6s ease-in-out infinite; }
+.mini-bau { width: 34px; height: 26px; position: relative; display: block; }
+.mini-bau::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 10px; border-radius: 8px 8px 2px 2px; background: var(--cor-tampa); border: 2px solid #3a2208; }
+.mini-bau::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 16px; border-radius: 2px 2px 4px 4px; background: var(--cor-corpo); border: 2px solid #3a2208; }
+@keyframes pulsar { 50% { transform: scale(1.06); } }
+.t-madeira { --cor-tampa: #b0753a; --cor-corpo: #8a5a2b; --cor-brilho: #ffcf8a; }
+.t-prata { --cor-tampa: #d9e2ec; --cor-corpo: #9aa8b8; --cor-brilho: #ffffff; }
+.t-ouro { --cor-tampa: #ffd84a; --cor-corpo: #e0a714; --cor-brilho: #fff3b0; }
+/* Quem está jogando */
+.lista-perfis { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.lista-perfis button {
+  text-align: left; font-family: 'Baloo 2', sans-serif; color: #fff; cursor: pointer; border-radius: 14px; padding: 8px 10px;
+  background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.2); line-height: 1.15;
+}
+.lista-perfis button b { display: block; font-size: 17px; }
+.lista-perfis button small { font-size: 12px; color: #c9d3f5; }
+.lista-perfis button[aria-pressed="true"] { border-color: var(--ouro-2); background: rgba(255,210,63,.15); }
+.campo-escuro { flex: 1; min-width: 0; font: 700 18px 'Baloo 2', sans-serif; padding: 8px 12px; border-radius: 12px; border: 3px solid #2a1606; background: #fbf1d6; color: #2a1606; }
+/* Recompensas no fim da partida */
+.recompensas { border: 3px solid #e0a714; background: linear-gradient(180deg, #fff8dc, #ffeeb0); border-radius: 16px; padding: 10px 14px; margin: 10px 0; color: #4a3200; }
+.recompensas:empty { display: none; }
+.recompensas .total { font-family: 'Lilita One', sans-serif; font-size: 30px; display: flex; align-items: center; gap: 8px; }
+.recompensas ul { margin: 2px 0 6px; padding-left: 18px; font-size: 15px; }
+.recompensas .ganhou-bau { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 800; font-size: 17px; }
+.recompensas .ganhou-bau .bj { font-size: 17px; padding: 8px 16px; flex-direction: row; }
+/* Baú abrindo */
+.cam-bau { position: fixed; inset: 0; z-index: 60; background: radial-gradient(circle at 50% 45%, #2b3a7a, #0b0f24 70%); display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+.cam-bau[hidden] { display: none; }
+.bau-palco { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 520px; text-align: center; color: #fff; }
+.bau-titulo { font-family: 'Lilita One', sans-serif; font-size: 34px; color: var(--cor-tampa, #ffd84a); text-shadow: 0 3px 0 #2a1606; position: relative; z-index: 1; }
+.bau-raios { position: absolute; top: 40px; left: 50%; width: 520px; height: 520px; margin-left: -260px; border-radius: 50%; opacity: 0; transition: opacity .4s;
+  background: repeating-conic-gradient(from 0deg, rgba(255,240,170,.28) 0 10deg, transparent 10deg 24deg); animation: girar 9s linear infinite; pointer-events: none; }
+.aberto .bau-raios { opacity: 1; }
+@keyframes girar { to { transform: rotate(360deg); } }
+.bau { position: relative; width: 190px; height: 160px; border: 0; background: none; cursor: pointer; padding: 0; z-index: 1; }
+.bau-corpo { position: absolute; left: 0; right: 0; bottom: 0; height: 100px; border-radius: 10px 10px 18px 18px; background: var(--cor-corpo); border: 6px solid #3a2208;
+  box-shadow: inset 0 -14px 0 rgba(0,0,0,.18), 0 12px 24px rgba(0,0,0,.5); }
+.bau-corpo::before, .bau-corpo::after { content: ''; position: absolute; top: 0; bottom: 0; width: 18px; background: #3a2208; opacity: .55; }
+.bau-corpo::before { left: 28px; } .bau-corpo::after { right: 28px; }
+.bau-fecho { position: absolute; left: 50%; top: -8px; width: 34px; height: 40px; margin-left: -17px; border-radius: 8px; background: #ffd84a; border: 5px solid #3a2208; z-index: 1; }
+.bau-tampa { position: absolute; left: -4px; right: -4px; top: 0; height: 74px; border-radius: 60px 60px 8px 8px; background: var(--cor-tampa); border: 6px solid #3a2208;
+  transform-origin: 50% 100%; transition: transform .45s cubic-bezier(.3,1.6,.5,1); z-index: 2; box-shadow: inset 0 10px 0 rgba(255,255,255,.25); }
+.tremendo .bau { animation: tremer .12s linear infinite; }
+@keyframes tremer { 25% { transform: rotate(-4deg) scale(1.03); } 75% { transform: rotate(4deg) scale(1.03); } }
+.aberto .bau-tampa { transform: translate(-34px, -26px) rotate(-28deg); }
+.bau-titulo { margin-bottom: 10px; }
+.aberto .bau-corpo { box-shadow: inset 0 -14px 0 rgba(0,0,0,.18), 0 0 60px 20px var(--cor-brilho); }
+.bau-dica { font-weight: 800; font-size: 18px; color: #dfe6ff; position: relative; z-index: 1; }
+.bau-premios { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; position: relative; z-index: 1; min-height: 10px; }
+.premio { width: 108px; background: #f7ecd0; color: #2b2210; border: 3px solid #8a6d3b; border-radius: 14px; padding: 6px; font-family: 'Baloo 2', sans-serif;
+  animation: saltar .45s cubic-bezier(.3,1.7,.5,1) both; box-shadow: 0 4px 0 rgba(0,0,0,.35); }
+.premio .retrato, .premio .ic { width: 64px; height: 64px; display: block; margin: 0 auto; font-size: 46px; }
+.premio b { display: block; font-size: 14px; line-height: 1.1; }
+.premio .qtd { font-family: 'Lilita One', sans-serif; font-size: 22px; color: #2e9e5b; }
+.premio.moedas { background: #fff3b0; border-color: #e0a714; }
+.premio.moedas .ic { font-size: 50px; }
+.premio .barra-copias { height: 8px; background: #d8c9a2; border-radius: 4px; overflow: hidden; margin-top: 2px; }
+.premio .barra-copias i { display: block; height: 100%; background: #2e9e5b; }
+@keyframes saltar { from { opacity: 0; transform: translateY(40px) scale(.4); } to { opacity: 1; transform: none; } }
+/* Nível e evolução das cartas */
+.carta-esc .nivel { position: absolute; top: 34px; left: 6px; font-family: 'Lilita One', sans-serif; font-size: 13px; color: #fff; background: #2f6fd6; border-radius: 8px; padding: 0 6px; border: 2px solid #fff; }
+.carta-esc .copias { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #5a4a2a; }
+.carta-esc .copias .barra-copias { flex: 1; height: 8px; background: #d8c9a2; border-radius: 4px; overflow: hidden; }
+.carta-esc .copias .barra-copias i { display: block; height: 100%; background: #2e9e5b; }
+.bt-evoluir {
+  font-family: 'Lilita One', sans-serif; font-size: 15px; border-radius: 10px; padding: 4px 6px; cursor: pointer; margin-top: 2px;
+  border: 2px solid #1a6a3a; background: linear-gradient(180deg, #6fe39a, #2e9e5b); color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.4);
+}
+.bt-evoluir:disabled { background: #cfc3a3; border-color: #a99b74; color: #6f6448; text-shadow: none; cursor: default; }
+.carta .nv { position: absolute; top: -8px; right: -6px; font-family: 'Lilita One', sans-serif; font-size: 11px; color: #fff; background: #2f6fd6; border: 2px solid #fff; border-radius: 8px; padding: 0 4px; }
 /* Meu baralho */
 .cartas-miolo {
   position: relative; z-index: 1; width: 100%; max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px;
@@ -326,6 +411,11 @@ table.temastab { width: 100%; border-collapse: collapse; font-size: 16px; } .tem
       <p class="chamada">Acerte as contas, ganhe energia e derrube as torres do inimigo!</p>
     </div>
     <div class="painel-batalha">
+      <div class="perfil-linha">
+        <button class="chip-perfil" id="btPerfil" aria-label="Trocar quem está jogando"><span>👤</span> <b id="nomePerfil">Jogador</b></button>
+        <span class="chip-moedas" title="Suas moedas">🪙 <b id="moedasInicio">0</b></span>
+      </div>
+      <div class="baus-linha" id="bausInicio" aria-label="Seus baús"></div>
       <label for="inCodigo" class="rotulo">Código da turma</label>
       <input id="inCodigo" maxlength="6" placeholder="ABCDEF" autocomplete="off" spellcheck="false">
       <div class="aviso-escuro" id="avisoCodigo"></div>
@@ -355,6 +445,7 @@ table.temastab { width: 100%; border-collapse: collapse; font-size: 16px; } .tem
     <div class="cartas-topo">
       <button class="bj-mini" id="btVoltarCartas" style="width:auto;padding:8px 14px">← Voltar</button>
       <h2 class="cartas-titulo">Meu baralho</h2>
+      <span class="chip-moedas">🪙 <b id="moedasCartas">0</b></span>
       <span class="cartas-conta" id="contaBaralho">8/8</span>
     </div>
     <p class="cartas-dica" id="dicaBaralho">Toque nas cartas para montar um baralho com 8. Custo médio: <b id="mediaBaralho">3,5</b> ⚡</p>
@@ -362,6 +453,37 @@ table.temastab { width: 100%; border-collapse: collapse; font-size: 16px; } .tem
     <div class="linha-menor" style="grid-template-columns:1fr 1fr">
       <button class="bj-mini" id="btBaralhoPadrao">↺ Baralho inicial</button>
       <button class="bj bj-azul" id="btSalvarBaralho" style="font-size:18px;padding:10px 6px">✓ Pronto</button>
+    </div>
+  </div>
+</section>
+
+<!-- QUEM ESTÁ JOGANDO -->
+<section id="telaPerfil" class="tela inicio">
+  <div class="inicio-veu" style="background:rgba(8,12,30,.6)"></div>
+  <div class="cartas-miolo" style="max-width:520px">
+    <div class="cartas-topo">
+      <button class="bj-mini" id="btVoltarPerfil" style="width:auto;padding:8px 14px">← Voltar</button>
+      <h2 class="cartas-titulo">Quem está jogando?</h2>
+    </div>
+    <p class="cartas-dica">Cada aluno tem o próprio progresso neste computador: moedas, baús e cartas. Toque no seu nome.</p>
+    <div class="lista-perfis" id="listaPerfis"></div>
+    <div class="painel-batalha" style="animation:none">
+      <label class="rotulo" for="inNovoPerfil">Sou novo aqui</label>
+      <div style="display:flex;gap:8px">
+        <input id="inNovoPerfil" class="campo-escuro" maxlength="16" placeholder="Seu primeiro nome" autocomplete="off">
+        <button class="bj bj-azul" id="btCriarPerfil" style="font-size:17px;padding:8px 14px;flex:none">Entrar</button>
+      </div>
+      <div class="aviso-escuro" id="avisoPerfil"></div>
+    </div>
+    <div class="painel-batalha" style="animation:none">
+      <span class="rotulo">Levar o progresso para outro computador</span>
+      <p class="cartas-dica" style="font-size:14px">Salve um arquivo com o seu progresso e abra esse arquivo no outro computador.</p>
+      <div class="linha-menor">
+        <button class="bj-mini" id="btSalvarArquivo">💾 Salvar em arquivo</button>
+        <button class="bj-mini" id="btAbrirArquivo">📂 Abrir arquivo</button>
+      </div>
+      <input type="file" id="inArquivo" accept=".json,application/json" hidden>
+      <div class="aviso-escuro" id="avisoArquivo"></div>
     </div>
   </div>
 </section>
@@ -493,6 +615,7 @@ table.temastab { width: 100%; border-collapse: collapse; font-size: 16px; } .tem
   <div class="miolo">
     <h1 class="titulo" id="fimTitulo" style="font-size:52px">Vitória!</h1>
     <div class="placar"><span class="meu">Você 👑 <span id="fimMeu">0</span></span><span class="inim"><span id="fimNomeInim">Robô</span> 👑 <span id="fimInim">0</span></span></div>
+    <div class="recompensas" id="recompensas"></div>
     <div class="stats">
       <div><b id="stCertas">0</b>certas</div>
       <div><b id="stErradas">0</b>erradas</div>
@@ -510,16 +633,31 @@ table.temastab { width: 100%; border-collapse: collapse; font-size: 16px; } .tem
   </div>
 </section>
 
+<!-- BAÚ ABRINDO -->
+<div class="cam-bau" id="camBau" hidden>
+  <div class="bau-palco">
+    <div class="bau-raios"></div>
+    <div class="bau-titulo" id="bauTitulo">Baú de Madeira</div>
+    <button class="bau" id="bauDesenho" aria-label="Abrir o baú">
+      <span class="bau-tampa"></span><span class="bau-corpo"><span class="bau-fecho"></span></span>
+    </button>
+    <div class="bau-dica" id="bauDica">Toque no baú para abrir!</div>
+    <div class="bau-premios" id="bauPremios"></div>
+    <button class="bj bj-azul" id="btBauOk" hidden style="font-size:20px;padding:12px 30px">Continuar</button>
+  </div>
+</div>
+
 <!-- Marca d'água e tela cheia: o mesmo padrão dos outros jogos do tiodanilo.com.br -->
 <button class="tool fsBtn fs-flutuante" aria-label="Tela cheia" hidden><span class="circle"></span><span class="lbl">Tela cheia</span></button>
 <img class="wm" alt="Tio Danilo" src="data:image/png;base64,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">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <!-- ?v= muda a cada atualização, para o navegador não misturar arquivos novos com antigos -->
-<script src="perguntas.js?v=20261106"></script>
-<script src="render3d.js?v=20261106"></script>
-<script src="jogo.js?v=20261106"></script>
-<script src="sala-firebase.js?v=20261106"></script>
-<script src="duelo.js?v=20261106"></script>
+<script src="perguntas.js?v=20261107"></script>
+<script src="render3d.js?v=20261107"></script>
+<script src="progresso.js?v=20261107"></script>
+<script src="jogo.js?v=20261107"></script>
+<script src="sala-firebase.js?v=20261107"></script>
+<script src="duelo.js?v=20261107"></script>
 
 </body>
 </html>

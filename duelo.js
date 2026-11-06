@@ -55,7 +55,8 @@
     }
     cfgSala = c; codigo = $('inCodigo').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     $('salaCodigo').textContent = codigo;
-    $('inNome').value = guardar.ler('arena-nome') || '';
+    const nomePerfil = window.Progresso && Progresso.nome !== 'Jogador' ? Progresso.nome : '';
+    $('inNome').value = nomePerfil || guardar.ler('arena-nome') || '';
     $('caixaNome').hidden = false; $('caixaEspera').hidden = true; $('avisoSala').textContent = '';
     A.mostrar('telaSala');
   };
@@ -64,6 +65,7 @@
     meuNome = $('inNome').value.trim().replace(/\s+/g, ' ').slice(0, 16);
     if (!meuNome) { $('avisoSala').textContent = 'Escreva seu nome para os colegas saberem quem é você.'; return; }
     guardar.gravar('arena-nome', meuNome);
+    if (window.Progresso) Progresso.renomearPadrao(meuNome); // o perfil "Jogador" ganha o nome do aluno
     try { sala = await room.join('sala-' + codigo.toLowerCase()); }
     catch (e) { $('avisoSala').textContent = 'Não deu para entrar na sala agora. Tente de novo em instantes.'; return; }
     estado = 'esperando';

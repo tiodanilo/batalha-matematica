@@ -73,7 +73,8 @@
   BARALHO.forEach(k => (CARTAS[k].key = k));
   const BARALHO_PADRAO = ['guerreiro', 'besteiros', 'golem', 'lanceiros', 'feiticeira', 'cavaleiro', 'balista', 'trovao'];
   const baralhoValido = b => Array.isArray(b) && b.length === 8 && new Set(b).size === 8 && b.every(k => CARTAS[k]);
-  let baralhoAluno = guardar.ler('arena-baralho');
+  Progresso.iniciar(CARTAS, BARALHO, BARALHO_PADRAO); // moedas, baús e níveis de cada aluno
+  let baralhoAluno = Progresso.baralho();
   if (!baralhoValido(baralhoAluno)) baralhoAluno = BARALHO_PADRAO.slice();
   const baralhoRobo = () => BARALHO.slice().sort(() => Math.random() - 0.5).slice(0, 8);
 
@@ -91,7 +92,7 @@
   /* ---------------- Telas ---------------- */
   function mostrar(id) {
     document.querySelectorAll('.tela').forEach(t => t.classList.toggle('ativa', t.id === id));
-    if (id === 'telaInicio') $('btJogarLivre').querySelector('small').textContent = descreverCfg(cfg);
+    if (id === 'telaInicio') { $('btJogarLivre').querySelector('small').textContent = descreverCfg(cfg); if (window.Progresso && $('bausInicio')) try { atualizarInicio(); } catch (e) { /* antes de iniciar */ } }
     if (VIT) { if (id === 'telaInicio') VIT.ligar(); else VIT.desligar(); }
     if (id === 'telaJogo') requestAnimationFrame(ajustarCanvas);
   }
@@ -169,6 +170,11 @@
       q: null, travado: 0, seq: 0, certas: 0, erradas: 0, porTema: {}, erros: [],
       fimT: 0, vencedor: null, podeColocar,
     };
+    // níveis das cartas: os do aluno; o robô joga com o nível médio do baralho do aluno
+    const meus = Progresso.niveis();
+    const media = Math.max(1, Math.round(baralhoAluno.reduce((t, k) => t + meus[k], 0) / 8));
+    const doRobo = {}; BARALHO.forEach(k => (doRobo[k] = media));
+    J.niveis = [meus, doRobo];
     if (R3) R3.limpar();
     $('camInicio').classList.add('ativa');
     $('camPausa').classList.remove('ativa');
@@ -229,7 +235,8 @@
     m.mao.forEach((k, i) => {
       const c = CARTAS[k], b = document.createElement('button');
       b.className = 'carta' + (J.sel === i ? ' sel' : '');
-      b.innerHTML = `<span class="custo">${c.custo}</span>${arte(k)}<span class="nm">${c.nome}</span>`;
+      const nv = J.niveis ? J.niveis[0][k] : 1;
+      b.innerHTML = `<span class="custo">${c.custo}</span>${nv > 1 ? `<span class="nv">Nv ${nv}</span>` : ''}${arte(k)}<span class="nm">${c.nome}</span>`;
       b.onclick = () => { J.sel = J.sel === i ? null : i; renderMao(); };
       box.appendChild(b);
     });
@@ -247,13 +254,14 @@
     if (J.en[team] < def.custo) return 'energia';
     if (!podeColocar(team, def, x, y)) return 'lugar';
     J.en[team] -= def.custo;
-    if (def.tipo === 'feitico') J.feiticos.push({ x, y, team, t: 0.7, raio: def.raio, dmg: def.dmg, key: k });
-    else if (def.tipo === 'predio') J.ents.push({ kind: 'pred', team, x, y, hp: def.hp, max: def.hp, dmg: def.dmg, hit: def.hit,
+    const mult = Progresso.mult(J.niveis && J.niveis[team] ? J.niveis[team][k] : 1); // cada nível: +8% de vida e dano
+    if (def.tipo === 'feitico') J.feiticos.push({ x, y, team, t: 0.7, raio: def.raio, dmg: def.dmg * mult, key: k });
+    else if (def.tipo === 'predio') J.ents.push({ kind: 'pred', team, x, y, hp: def.hp * mult, max: def.hp * mult, dmg: def.dmg * mult, hit: def.hit,
       range: def.range, radius: def.radius, vida: def.vida, cd: 0, proj: true, icone: def.icone, spawn: 1, flash: 0, def });
     else {
       const offs = def.n === 1 ? [[0, 0]] : def.n === 2 ? [[-0.55, 0], [0.55, 0]] : [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]];
       offs.forEach(([dx, dy]) => J.ents.push({
-        kind: 'unid', team, x: clamp(x + dx, 0.5, W - 0.5), y: y + dy, def, hp: def.hp, max: def.hp, dmg: def.dmg, hit: def.hit,
+        kind: 'unid', team, x: clamp(x + dx, 0.5, W - 0.5), y: y + dy, def, hp: def.hp * mult, max: def.hp * mult, dmg: def.dmg * mult, hit: def.hit,
         range: def.range, speed: def.speed, radius: def.radius, splash: def.splash || 0, proj: !!def.proj,
         soPredios: def.alvo === 'predios', visao: Math.max(5.5, def.range + 1.5), spawn: 1, cd: 0, alvo: null, retarget: 0,
         preso: false, flash: 0, icone: def.icone,
@@ -650,8 +658,31 @@
     if (J.estado === 'jogando') { J.estado = 'pausa'; $('camPausa').classList.add('ativa'); }
     else if (J.estado === 'pausa') { J.estado = 'jogando'; $('camPausa').classList.remove('ativa'); }
   }
+  function mostrarRecompensa() {
+    if (!J.premio) {
+      J.premio = Progresso.recompensar({ venceu: J.vencedor === 0, empate: J.vencedor === null, coroas: J.coroas[0], certas: J.certas });
+    }
+    const p = J.premio, box = $('recompensas');
+    let html = `<div class="total">🪙 +${p.total} moedas</div><ul>` +
+      p.det.filter(d => d[1] > 0).map(d => `<li>${d[0]}${d[2] ? ` (${d[2]})` : ''}: <b>+${d[1]}</b></li>`).join('') + '</ul>';
+    if (p.bau) {
+      html += `<div class="ganhou-bau"><span class="mini-bau t-${p.bau}"></span>Você ganhou um ${Progresso.BAUS[p.bau].nome} ${p.motivo}!` +
+        `<button class="bj bj-azul" id="btAbrirBauFim">🎁 Abrir agora</button></div>`;
+    } else if (p.cheio) {
+      html += `<div class="ganhou-bau">🎁 Você ganharia um baú, mas seus ${Progresso.MAX_BAUS} lugares estão cheios. Abra um baú para liberar espaço.</div>`;
+    } else {
+      html += `<div style="font-size:14px">Dica: vença ou acerte 15 contas numa partida para ganhar um baú.</div>`;
+    }
+    box.innerHTML = html;
+    const bt = $('btAbrirBauFim');
+    if (bt) bt.onclick = () => {
+      const i = Progresso.perfil.baus.length - 1;
+      if (i >= 0) abrirBau(i, () => { bt.disabled = true; bt.textContent = 'Aberto ✓'; });
+    };
+  }
   function mostrarFim() {
     const v = J.vencedor;
+    mostrarRecompensa();
     $('fimTitulo').textContent = v === 0 ? 'Vitória! 🏆' : v === 1 ? 'Derrota 😅' : 'Empate 🤝';
     $('fimMeu').textContent = J.coroas[0]; $('fimInim').textContent = J.coroas[1];
     $('fimNomeInim').textContent = J.nomeInim || 'Robô';
@@ -726,16 +757,85 @@
   $('inCodigo').addEventListener('keydown', e => { if (e.key === 'Enter') $('btEntrar').click(); });
   $('btJogarLivre').onclick = () => iniciar(comRitmoDoAluno(cfg));
 
-  /* Meu baralho: o aluno escolhe 8 das 12 cartas */
+  /* ---------- Início: quem está jogando, moedas e baús ---------- */
+  function atualizarInicio() {
+    $('nomePerfil').textContent = Progresso.nome;
+    $('moedasInicio').textContent = Progresso.moedas;
+    const box = $('bausInicio'); box.innerHTML = '';
+    const baus = Progresso.perfil.baus;
+    for (let i = 0; i < Progresso.MAX_BAUS; i++) {
+      const b = document.createElement('button'), t = baus[i];
+      b.className = 'vaga-bau' + (t ? ' cheia' : '');
+      if (t) { b.innerHTML = `<span class="mini-bau t-${t}"></span>`; b.title = Progresso.BAUS[t].nome + ': toque para abrir'; b.onclick = () => abrirBau(i); }
+      else { b.textContent = 'vazio'; b.disabled = true; }
+      box.appendChild(b);
+    }
+  }
+
+  /* ---------- Abrir baú (animação + prêmios) ---------- */
+  function abrirBau(i, depois) {
+    const tipo = Progresso.perfil.baus[i];
+    if (!tipo) return;
+    const cam = $('camBau'), palco = cam.querySelector('.bau-palco');
+    palco.className = 'bau-palco t-' + tipo;
+    $('bauTitulo').textContent = Progresso.BAUS[tipo].nome;
+    $('bauDica').textContent = 'Toque no baú para abrir!';
+    $('bauPremios').innerHTML = ''; $('btBauOk').hidden = true;
+    cam.hidden = false;
+    let aberto = false;
+    $('bauDesenho').onclick = () => {
+      if (aberto) return; aberto = true;
+      palco.classList.add('tremendo'); $('bauDica').textContent = '…';
+      setTimeout(() => {
+        palco.classList.remove('tremendo'); palco.classList.add('aberto');
+        const r = Progresso.abrirBau(i);
+        $('bauDica').textContent = 'Você ganhou:';
+        const itens = [`<div class="premio moedas"><span class="ic">🪙</span><b>Moedas</b><span class="qtd">+${r.moedas}</span></div>`]
+          .concat(r.cartas.map(({ k, q }) => {
+            const c = Progresso.perfil.cartas[k], cu = Progresso.custo(c.n);
+            const pct = cu ? Math.min(100, Math.round(c.c / cu.copias * 100)) : 100;
+            return `<div class="premio">${arte(k)}<b>${CARTAS[k].nome}</b><span class="qtd">+${q}</span>` +
+              `<div class="barra-copias"><i style="width:${pct}%"></i></div></div>`;
+          }));
+        const box = $('bauPremios');
+        itens.forEach((h, j) => setTimeout(() => box.insertAdjacentHTML('beforeend', h), 250 + j * 380));
+        setTimeout(() => { $('btBauOk').hidden = false; }, 300 + itens.length * 380);
+      }, 900);
+    };
+    $('btBauOk').onclick = () => {
+      cam.hidden = true; palco.classList.remove('aberto', 'tremendo');
+      atualizarInicio(); if ($('telaCartas').classList.contains('ativa')) desenharBaralho();
+      if (depois) depois();
+    };
+  }
+
+  /* Meu baralho: o aluno escolhe 8 das 12 cartas e evolui as cartas */
   let escolha = [];
   const NOVAS = ['bombardeiro', 'curandeira', 'flechas', 'barricada'];
+  const MSG_EVOLUIR = { copias: 'Faltam cartas repetidas: abra baús para conseguir mais.', moedas: 'Faltam moedas: jogue e acerte contas para ganhar mais.', max: 'Essa carta já está no nível máximo!' };
   function desenharBaralho() {
+    $('moedasCartas').textContent = Progresso.moedas;
     const grade = $('gradeCartas'); grade.innerHTML = '';
     BARALHO.forEach(k => {
       const c = CARTAS[k], b = document.createElement('button'), dentro = escolha.includes(k);
+      const pc = Progresso.perfil.cartas[k], cu = Progresso.custo(pc.n);
+      const pct = cu ? Math.min(100, Math.round(pc.c / cu.copias * 100)) : 100;
       b.className = 'carta-esc'; b.setAttribute('aria-pressed', dentro);
       b.innerHTML = `<span class="custo">${c.custo}</span>${NOVAS.includes(k) ? '<span class="novo">NOVA</span>' : ''}` +
-        `<span class="marca">${dentro ? '✅' : ''}</span>${arte(k)}<b>${c.nome}</b><span class="d">${c.desc}</span>`;
+        `<span class="nivel">Nv ${pc.n}</span>` +
+        `<span class="marca">${dentro ? '✅' : ''}</span>${arte(k)}<b>${c.nome}</b><span class="d">${c.desc}</span>` +
+        `<span class="copias"><span class="barra-copias"><i style="width:${pct}%"></i></span>${cu ? `${pc.c}/${cu.copias}` : 'máx.'}</span>` +
+        (cu ? `<span class="bt-evoluir" role="button" tabindex="0" data-k="${k}" aria-disabled="${!Progresso.podeEvoluir(k)}">⬆ Evoluir · 🪙${cu.moedas}</span>` : '');
+      const ev = b.querySelector('.bt-evoluir');
+      if (ev) {
+        if (!Progresso.podeEvoluir(k)) ev.style.cssText = 'background:#cfc3a3;border-color:#a99b74;color:#6f6448;text-shadow:none';
+        ev.onclick = e => {
+          e.stopPropagation();
+          const r = Progresso.evoluir(k);
+          if (r === 'ok') { $('dicaBaralho').innerHTML = `⬆️ <b>${c.nome}</b> subiu para o nível ${Progresso.nivel(k)}! Vida e dano maiores.`; desenharBaralho(true); }
+          else $('dicaBaralho').textContent = MSG_EVOLUIR[r] || '';
+        };
+      }
       b.onclick = () => {
         if (dentro) escolha = escolha.filter(x => x !== k);
         else if (escolha.length < 8) escolha.push(k);
@@ -746,7 +846,7 @@
     });
     const n = escolha.length, media = n ? escolha.reduce((t, k) => t + CARTAS[k].custo, 0) / n : 0;
     $('contaBaralho').textContent = n + '/8'; $('contaBaralho').classList.toggle('ok', n === 8);
-    $('dicaBaralho').innerHTML = n === 8
+    if (arguments[0] !== true) $('dicaBaralho').innerHTML = n === 8
       ? `Baralho completo! Custo médio: <b>${media.toFixed(1).replace('.', ',')}</b> ⚡`
       : `Escolha mais <b>${8 - n}</b> ${8 - n === 1 ? 'carta' : 'cartas'}. Toque numa carta para colocar ou tirar.`;
     $('btSalvarBaralho').disabled = n !== 8; $('btSalvarBaralho').style.opacity = n === 8 ? 1 : 0.5;
@@ -756,9 +856,59 @@
   $('btBaralhoPadrao').onclick = () => { escolha = BARALHO_PADRAO.slice(); desenharBaralho(); };
   $('btSalvarBaralho').onclick = () => {
     if (!baralhoValido(escolha)) return;
-    baralhoAluno = escolha.slice(); guardar.gravar('arena-baralho', baralhoAluno);
+    baralhoAluno = escolha.slice(); Progresso.salvarBaralho(baralhoAluno);
     mostrar('telaInicio');
   };
+
+  /* ---------- Quem está jogando (um progresso para cada aluno) ---------- */
+  function desenharPerfis() {
+    const box = $('listaPerfis'); box.innerHTML = '';
+    Progresso.perfis().forEach(p => {
+      const b = document.createElement('button');
+      b.setAttribute('aria-pressed', p.nome === Progresso.nome);
+      b.innerHTML = `<b></b><small>🪙 ${p.moedas} · ${p.stats.vitorias} ${p.stats.vitorias === 1 ? 'vitória' : 'vitórias'}</small>`;
+      b.querySelector('b').textContent = p.nome; // nome digitado pelo aluno: sempre como texto
+      b.onclick = () => { Progresso.trocar(p.nome); trocouPerfil(); mostrar('telaInicio'); };
+      box.appendChild(b);
+    });
+  }
+  function trocouPerfil() {
+    baralhoAluno = Progresso.baralho();
+    if (!baralhoValido(baralhoAluno)) baralhoAluno = BARALHO_PADRAO.slice();
+    atualizarInicio();
+  }
+  $('btPerfil').onclick = () => { $('avisoPerfil').textContent = ''; $('avisoArquivo').textContent = ''; desenharPerfis(); mostrar('telaPerfil'); };
+  $('btVoltarPerfil').onclick = () => mostrar('telaInicio');
+  $('btCriarPerfil').onclick = () => {
+    const nome = $('inNovoPerfil').value;
+    // o primeiro aluno do computador "assume" o perfil inicial (com o que já ganhou)
+    const r = Progresso.nome === 'Jogador' && Progresso.perfis().length === 1 && Progresso.renomearPadrao(nome) ? 'ok' : Progresso.criar(nome);
+    if (r === 'vazio') { $('avisoPerfil').textContent = 'Escreva seu nome.'; return; }
+    $('inNovoPerfil').value = '';
+    trocouPerfil(); mostrar('telaInicio');
+  };
+  $('inNovoPerfil').addEventListener('keydown', e => { if (e.key === 'Enter') $('btCriarPerfil').click(); });
+  $('btSalvarArquivo').onclick = async () => {
+    const nome = 'batalha-matematica-' + Progresso.nome.normalize('NFD').replace(/[^\w-]+/g, '-').toLowerCase() + '.json';
+    const dados = Progresso.exportar();
+    try {
+      const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+      if (dl) { await dl.save({ filename: nome, data: dados }); $('avisoArquivo').textContent = 'Arquivo salvo! Guarde-o num pendrive ou no seu e-mail.'; return; }
+    } catch (e) { if (e && e.code === 'declined') { $('avisoArquivo').textContent = 'Você cancelou o salvamento.'; return; } }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([dados], { type: 'application/json' })); a.download = nome;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    $('avisoArquivo').textContent = `Arquivo "${nome}" salvo na pasta Downloads. Leve-o para o outro computador.`;
+  };
+  $('btAbrirArquivo').onclick = () => $('inArquivo').click();
+  $('inArquivo').onchange = async () => {
+    const f = $('inArquivo').files[0]; if (!f) return;
+    const r = Progresso.importar(await f.text());
+    $('inArquivo').value = '';
+    if (r === 'ok') { trocouPerfil(); desenharPerfis(); $('avisoArquivo').textContent = `Progresso de ${Progresso.nome} carregado!`; }
+    else $('avisoArquivo').textContent = r === 'semEspaco' ? 'Carreguei, mas este navegador não deixou guardar.' : 'Esse arquivo não é um progresso da Batalha Matemática.';
+  };
+  atualizarInicio();
   $('btProfessor').onclick = () => { montarProfessor(); mostrar('telaProfessor'); };
   $('btComo').onclick = () => mostrar('telaComo');
   $('btVoltarProf').onclick = $('btVoltarComo').onclick = () => mostrar('telaInicio');
@@ -813,6 +963,11 @@
     CARTAS, BARALHO, codificar, decodificar, descreverCfg, get cfg() { return cfg; },
     get baralhoAluno() { return baralhoAluno.slice(); }, novaMao, baralhoValido, mostrar, renderMao, mostrarFim, aviso, podeColocar, jogar, terminar,
     get J() { return J; }, set J(v) { J = v; },
-    novaPartida(c, online, nomeInim) { novaPartida(c); J.online = online || null; J.nomeInim = nomeInim || null; cfgPartida = c; $('btPausa').hidden = !!online; return J; },
+    novaPartida(c, online, nomeInim) {
+      novaPartida(c);
+      if (online && (online.papel === 'anfitriao' || online.papel === 'convidado')) { // duelo: todos no mesmo nível, para ser justo
+        const um = {}; BARALHO.forEach(k => (um[k] = 1)); J.niveis = [um, um]; renderMao();
+      }
+      J.online = online || null; J.nomeInim = nomeInim || null; cfgPartida = c; $('btPausa').hidden = !!online; return J; },
   };
 })();
