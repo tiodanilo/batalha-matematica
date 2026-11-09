@@ -14,6 +14,7 @@
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
   /* ---------------- Código da turma ---------------- */
   // Código de 6 letras/números: conteúdos (16 bits), ano, duração, robô e ritmo (2 bits cada) + 6 bits de conferência.
@@ -74,6 +75,22 @@
   const BARALHO_PADRAO = ['guerreiro', 'besteiros', 'golem', 'lanceiros', 'feiticeira', 'cavaleiro', 'balista', 'trovao'];
   const baralhoValido = b => Array.isArray(b) && b.length === 8 && new Set(b).size === 8 && b.every(k => CARTAS[k]);
   Progresso.iniciar(CARTAS, BARALHO, BARALHO_PADRAO); // moedas, baús e níveis de cada aluno
+  // Cartas criadas na Oficina: viram cartas de verdade (com o desenho do guerreiro base)
+  function registrarCriadas() {
+    Progresso.SLOTS.forEach(s => delete CARTAS[s]);
+    for (const [slot, spec] of Object.entries(Progresso.criadas())) {
+      const b = CARTAS[spec.base], c = Progresso.calcular(spec);
+      CARTAS[slot] = Object.assign({}, b, { key: slot, modelo: spec.base, nome: spec.nome, custo: c.custo, hp: c.hp, dmg: c.dmg,
+        speed: c.speed, criada: true, desc: `Criada por você (base: ${b.nome}).` });
+    }
+  }
+  registrarCriadas();
+  // no duelo valem só as 12 oficiais: as criadas dão lugar a cartas oficiais
+  const baralhoOficial = b => {
+    const out = b.filter(k => BARALHO.includes(k));
+    for (const k of BARALHO_PADRAO.concat(BARALHO)) if (out.length < 8 && !out.includes(k)) out.push(k);
+    return out;
+  };
   let baralhoAluno = Progresso.baralho();
   if (!baralhoValido(baralhoAluno)) baralhoAluno = BARALHO_PADRAO.slice();
   const baralhoRobo = () => BARALHO.slice().sort(() => Math.random() - 0.5).slice(0, 8);
@@ -85,7 +102,7 @@
   const VIT = R3 ? R3.vitrine(document.getElementById('vitrine3d')) : null; // batalha de fundo da tela de início
   if (VIT) VIT.ligar();
   const arte = k => {
-    const src = R3 && R3.retrato(k);
+    const src = R3 && R3.retrato((CARTAS[k] && CARTAS[k].modelo) || k);
     return src ? `<img class="retrato" src="${src}" alt="">` : `<span class="ic">${CARTAS[k].icone}</span>`;
   };
 
@@ -236,7 +253,7 @@
       const c = CARTAS[k], b = document.createElement('button');
       b.className = 'carta' + (J.sel === i ? ' sel' : '');
       const nv = J.niveis ? J.niveis[0][k] : 1;
-      b.innerHTML = `<span class="custo">${c.custo}</span>${nv > 1 ? `<span class="nv">Nv ${nv}</span>` : ''}${arte(k)}<span class="nm">${c.nome}</span>`;
+      b.innerHTML = `<span class="custo">${c.custo}</span>${nv > 1 ? `<span class="nv">Nv ${nv}</span>` : ''}${arte(k)}<span class="nm">${esc(c.nome)}</span>`;
       b.onclick = () => { J.sel = J.sel === i ? null : i; renderMao(); };
       box.appendChild(b);
     });
@@ -660,10 +677,13 @@
   }
   function mostrarRecompensa() {
     if (!J.premio) {
-      J.premio = Progresso.recompensar({ venceu: J.vencedor === 0, empate: J.vencedor === null, coroas: J.coroas[0], certas: J.certas });
+      J.premio = Progresso.recompensar({ venceu: J.vencedor === 0, empate: J.vencedor === null, coroas: J.coroas[0], certas: J.certas, erradas: J.erradas });
+      enviarRanking();
     }
-    const p = J.premio, box = $('recompensas');
-    let html = `<div class="total">🪙 +${p.total} moedas</div><ul>` +
+    const p = J.premio, box = $('recompensas'), jog = Progresso.jogador;
+    let html = `<div class="total">🪙 +${p.total} moedas <span style="font-size:18px;color:#2f6fd6">⭐ +${p.xpGanho} XP</span></div>` +
+      (p.subiu ? `<div class="ganhou-bau">🎉 Você subiu para o nível ${p.subiu}!</div>` : '') +
+      `<div style="font-size:14px">Nível ${jog.nivel}: ${jog.atual} de ${jog.falta} XP para o próximo</div><ul>` +
       p.det.filter(d => d[1] > 0).map(d => `<li>${d[0]}${d[2] ? ` (${d[2]})` : ''}: <b>+${d[1]}</b></li>`).join('') + '</ul>';
     if (p.bau) {
       html += `<div class="ganhou-bau"><span class="mini-bau t-${p.bau}"></span>Você ganhou um ${Progresso.BAUS[p.bau].nome} ${p.motivo}!` +
@@ -752,7 +772,10 @@
     const c = decodificar($('inCodigo').value);
     $('infoTurma').textContent = c ? descreverCfg(c).replace(/ · ritmo [^·]+/, '') : '';
     $('avisoCodigo').textContent = '';
-    if (c) { ritmoAluno = c.ritmo || 0; desenharRitmoAluno(); } // começa com a velocidade que o professor escolheu
+    if (c) {
+      ritmoAluno = c.ritmo || 0; desenharRitmoAluno(); // começa com a velocidade que o professor escolheu
+      Progresso.turma = $('inCodigo').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); // para o ranking da turma
+    }
   });
   $('inCodigo').addEventListener('keydown', e => { if (e.key === 'Enter') $('btEntrar').click(); });
   $('btJogarLivre').onclick = () => iniciar(comRitmoDoAluno(cfg));
@@ -761,6 +784,10 @@
   function atualizarInicio() {
     $('nomePerfil').textContent = Progresso.nome;
     $('moedasInicio').textContent = Progresso.moedas;
+    const jog = Progresso.jogador;
+    $('nvJogador').textContent = 'Nv ' + jog.nivel;
+    $('xpBarra').style.width = Math.round(jog.atual / jog.falta * 100) + '%';
+    $('btPerfil').title = `Nível ${jog.nivel}: ${jog.atual} de ${jog.falta} XP para o próximo`;
     const box = $('bausInicio'); box.innerHTML = '';
     const baus = Progresso.perfil.baus;
     for (let i = 0; i < Progresso.MAX_BAUS; i++) {
@@ -776,6 +803,9 @@
   function abrirBau(i, depois) {
     const tipo = Progresso.perfil.baus[i];
     if (!tipo) return;
+    mostrarAbertura(tipo, () => Progresso.abrirBau(i), depois);
+  }
+  function mostrarAbertura(tipo, gerar, depois) { // gerar() entrega o prêmio só quando o aluno toca no baú
     const cam = $('camBau'), palco = cam.querySelector('.bau-palco');
     palco.className = 'bau-palco t-' + tipo;
     $('bauTitulo').textContent = Progresso.BAUS[tipo].nome;
@@ -788,9 +818,9 @@
       palco.classList.add('tremendo'); $('bauDica').textContent = '…';
       setTimeout(() => {
         palco.classList.remove('tremendo'); palco.classList.add('aberto');
-        const r = Progresso.abrirBau(i);
+        const r = gerar();
         $('bauDica').textContent = 'Você ganhou:';
-        const itens = [`<div class="premio moedas"><span class="ic">🪙</span><b>Moedas</b><span class="qtd">+${r.moedas}</span></div>`]
+        const itens = (r.moedas ? [`<div class="premio moedas"><span class="ic">🪙</span><b>Moedas</b><span class="qtd">+${r.moedas}</span></div>`] : [])
           .concat(r.cartas.map(({ k, q }) => {
             const c = Progresso.perfil.cartas[k], cu = Progresso.custo(c.n);
             const pct = cu ? Math.min(100, Math.round(c.c / cu.copias * 100)) : 100;
@@ -805,6 +835,7 @@
     $('btBauOk').onclick = () => {
       cam.hidden = true; palco.classList.remove('aberto', 'tremendo');
       atualizarInicio(); if ($('telaCartas').classList.contains('ativa')) desenharBaralho();
+      if ($('telaLoja').classList.contains('ativa')) desenharLoja();
       if (depois) depois();
     };
   }
@@ -816,16 +847,22 @@
   function desenharBaralho() {
     $('moedasCartas').textContent = Progresso.moedas;
     const grade = $('gradeCartas'); grade.innerHTML = '';
-    BARALHO.forEach(k => {
+    BARALHO.concat(Object.keys(Progresso.criadas())).forEach(k => {
       const c = CARTAS[k], b = document.createElement('button'), dentro = escolha.includes(k);
-      const pc = Progresso.perfil.cartas[k], cu = Progresso.custo(pc.n);
-      const pct = cu ? Math.min(100, Math.round(pc.c / cu.copias * 100)) : 100;
+      if (!c) return;
       b.className = 'carta-esc'; b.setAttribute('aria-pressed', dentro);
-      b.innerHTML = `<span class="custo">${c.custo}</span>${NOVAS.includes(k) ? '<span class="novo">NOVA</span>' : ''}` +
-        `<span class="nivel">Nv ${pc.n}</span>` +
-        `<span class="marca">${dentro ? '✅' : ''}</span>${arte(k)}<b>${c.nome}</b><span class="d">${c.desc}</span>` +
-        `<span class="copias"><span class="barra-copias"><i style="width:${pct}%"></i></span>${cu ? `${pc.c}/${cu.copias}` : 'máx.'}</span>` +
-        (cu ? `<span class="bt-evoluir" role="button" tabindex="0" data-k="${k}" aria-disabled="${!Progresso.podeEvoluir(k)}">⬆ Evoluir · 🪙${cu.moedas}</span>` : '');
+      if (c.criada) { // carta da Oficina: sem níveis
+        b.innerHTML = `<span class="custo">${c.custo}</span><span class="criada">CRIADA</span>` +
+          `<span class="marca">${dentro ? '✅' : ''}</span>${arte(k)}<b>${esc(c.nome)}</b><span class="d">${esc(c.desc)}</span>`;
+      } else {
+        const pc = Progresso.perfil.cartas[k], cu = Progresso.custo(pc.n);
+        const pct = cu ? Math.min(100, Math.round(pc.c / cu.copias * 100)) : 100;
+        b.innerHTML = `<span class="custo">${c.custo}</span>${NOVAS.includes(k) ? '<span class="novo">NOVA</span>' : ''}` +
+          `<span class="nivel">Nv ${pc.n}</span>` +
+          `<span class="marca">${dentro ? '✅' : ''}</span>${arte(k)}<b>${c.nome}</b><span class="d">${c.desc}</span>` +
+          `<span class="copias"><span class="barra-copias"><i style="width:${pct}%"></i></span>${cu ? `${pc.c}/${cu.copias}` : 'máx.'}</span>` +
+          (cu ? `<span class="bt-evoluir" role="button" tabindex="0" data-k="${k}" aria-disabled="${!Progresso.podeEvoluir(k)}">⬆ Evoluir · 🪙${cu.moedas}</span>` : '');
+      }
       const ev = b.querySelector('.bt-evoluir');
       if (ev) {
         if (!Progresso.podeEvoluir(k)) ev.style.cssText = 'background:#cfc3a3;border-color:#a99b74;color:#6f6448;text-shadow:none';
@@ -873,6 +910,7 @@
     });
   }
   function trocouPerfil() {
+    registrarCriadas();
     baralhoAluno = Progresso.baralho();
     if (!baralhoValido(baralhoAluno)) baralhoAluno = BARALHO_PADRAO.slice();
     atualizarInicio();
@@ -908,6 +946,165 @@
     if (r === 'ok') { trocouPerfil(); desenharPerfis(); $('avisoArquivo').textContent = `Progresso de ${Progresso.nome} carregado!`; }
     else $('avisoArquivo').textContent = r === 'semEspaco' ? 'Carreguei, mas este navegador não deixou guardar.' : 'Esse arquivo não é um progresso da Batalha Matemática.';
   };
+
+  /* ---------- Loja ---------- */
+  function desenharLoja() {
+    $('moedasLoja').textContent = Progresso.moedas;
+    const grade = $('gradeLoja'); grade.innerHTML = '';
+    Progresso.LOJA.forEach(item => {
+      const d = document.createElement('div'), pode = Progresso.moedas >= item.preco;
+      d.className = 'item-loja';
+      d.innerHTML = `<div class="vitrine-bau">${item.id === 'pacote' ? '<div class="pacote">🃏</div>' : `<span class="mini-bau t-${item.id}"></span>`}</div>` +
+        `<b>${Progresso.BAUS[item.id].nome}</b><span>${item.desc}</span>` +
+        `<button class="bj ${pode ? 'bj-azul' : 'bj-verm'}" ${pode ? '' : 'disabled'}>🪙 ${item.preco}</button>`;
+      d.querySelector('button').onclick = () => {
+        if (Progresso.moedas < item.preco) return;
+        mostrarAbertura(item.id, () => Progresso.comprar(item.id), desenharLoja);
+      };
+      grade.appendChild(d);
+    });
+    const falta = Math.min(...Progresso.LOJA.map(i => i.preco)) - Progresso.moedas;
+    $('dicaLoja').textContent = falta > 0
+      ? `Faltam ${falta} moedas para o item mais barato. Cada conta certa vale 2 moedas!`
+      : 'Troque suas moedas por cartas. Quanto mais contas certas, mais moedas você ganha!';
+  }
+  $('btLoja').onclick = () => { desenharLoja(); mostrar('telaLoja'); };
+  $('btVoltarLoja').onclick = () => mostrar('telaInicio');
+
+  /* ---------- Ranking (online, pelo Firebase do site) ---------- */
+  const noClaude = !!(window.claude && window.claude.use);
+  function enviarRanking() {
+    if (noClaude || !window.SalaFirebase || !SalaFirebase.ranking || Progresso.nome === 'Jogador') return Promise.resolve();
+    const nomes = ['ranking-geral'];
+    if (Progresso.turma) nomes.push('ranking-turma-' + Progresso.turma);
+    return SalaFirebase.ranking.enviar(nomes, Progresso.perfil.id, Progresso.dadosRanking()).catch(() => {});
+  }
+  let abaRk = 'turma', ordemRk = 'v';
+  const ORDENS = [['v', '🏆 Vitórias'], ['moedas', '🪙 Moedas'], ['partidas', '🎮 Partidas'], ['acertos', '✅ Acertos'], ['nivel', '⭐ Nível']];
+  const pctAcerto = j => (j.acertos + j.erradas ? Math.round(j.acertos / (j.acertos + j.erradas) * 100) : 0);
+  function desenharControlesRk() {
+    const abas = $('abasRanking'); abas.innerHTML = '';
+    [['turma', 'Minha turma' + (Progresso.turma ? ` (${Progresso.turma})` : '')], ['geral', 'Geral']].forEach(([id, rot]) => {
+      const b = document.createElement('button'); b.textContent = rot; b.setAttribute('aria-pressed', abaRk === id);
+      b.onclick = () => { abaRk = id; desenharControlesRk(); carregarRk(); };
+      abas.appendChild(b);
+    });
+    const ord = $('ordemRanking'); ord.innerHTML = '';
+    ORDENS.forEach(([id, rot]) => {
+      const b = document.createElement('button'); b.textContent = rot; b.setAttribute('aria-pressed', ordemRk === id);
+      b.onclick = () => { ordemRk = id; desenharControlesRk(); desenharRk(); };
+      ord.appendChild(b);
+    });
+  }
+  let dadosRk = [];
+  async function carregarRk() {
+    const lista = $('listaRanking'); lista.innerHTML = ''; dadosRk = [];
+    if (noClaude || !window.SalaFirebase || !SalaFirebase.ranking) { $('dicaRanking').textContent = 'O ranking funciona no site: tiodanilo.github.io/batalha-matematica'; return; }
+    if (abaRk === 'turma' && !Progresso.turma) { $('dicaRanking').textContent = 'Digite o código da turma na tela de início para ver o ranking da sua turma.'; return; }
+    $('dicaRanking').textContent = 'Carregando…';
+    const aba = abaRk;
+    try {
+      await enviarRanking();
+      const dados = await SalaFirebase.ranking.ler(aba === 'turma' ? 'ranking-turma-' + Progresso.turma : 'ranking-geral');
+      if (aba !== abaRk) return;
+      dadosRk = dados; desenharRk();
+    } catch (e) { $('dicaRanking').textContent = 'Não consegui carregar o ranking agora. Confira a internet e tente de novo.'; }
+  }
+  function desenharRk() {
+    const lista = $('listaRanking'); lista.innerHTML = '';
+    if (!dadosRk.length) { $('dicaRanking').textContent = 'Ninguém no ranking ainda. Jogue uma partida para aparecer!'; return; }
+    const val = j => (ordemRk === 'v' ? j.v * 1e6 + j.e * 1e3 - j.d : j[ordemRk]);
+    const ord = dadosRk.slice().sort((a, b) => val(b) - val(a));
+    const euId = Progresso.perfil.id, minhaPos = ord.findIndex(j => j.id === euId);
+    $('dicaRanking').textContent = (Progresso.nome === 'Jogador' ? 'Toque em 👤 e escreva seu nome para entrar no ranking. ' : '') +
+      (minhaPos >= 0 ? `Você está em ${minhaPos + 1}º lugar de ${ord.length}.` : `${ord.length} ${ord.length === 1 ? 'jogador' : 'jogadores'}.`);
+    const mostrarJ = ord.slice(0, 50);
+    if (minhaPos >= 50) mostrarJ.push(ord[minhaPos]);
+    mostrarJ.forEach(j => {
+      const pos = ord.indexOf(j) + 1, li = document.createElement('li');
+      if (j.id === euId) li.className = 'eu';
+      const principal = ordemRk === 'v' ? [j.v, 'vitórias'] : ordemRk === 'acertos' ? [j.acertos, `${pctAcerto(j)}% de acerto`]
+        : ordemRk === 'nivel' ? ['Nv ' + j.nivel, ''] : [j[ordemRk], ordemRk === 'moedas' ? 'moedas' : 'partidas'];
+      li.innerHTML = `<span class="pos">${pos}º</span><span class="quem"><b></b><small>V ${j.v} · E ${j.e} · D ${j.d} · ${pctAcerto(j)}% de acerto · Nv ${j.nivel}</small></span>` +
+        `<span class="valor">${principal[0]}<small>${principal[1]}</small></span>`;
+      li.querySelector('b').textContent = j.nome; // nome digitado pelo aluno: sempre como texto
+      lista.appendChild(li);
+    });
+  }
+  $('btRanking').onclick = () => { abaRk = Progresso.turma ? 'turma' : 'geral'; desenharControlesRk(); mostrar('telaRanking'); carregarRk(); };
+  $('btVoltarRanking').onclick = () => mostrar('telaInicio');
+
+  /* ---------- Oficina: o aluno cria a própria carta ---------- */
+  let slotOf = 'meu1', spec = null;
+  const fmtN = n => String(Math.round(n * 100) / 100).replace('.', ',');
+  function carregarSlot() {
+    const cr = Progresso.criadas()[slotOf];
+    spec = cr ? Object.assign({}, cr) : { base: 'guerreiro', nome: '', vida: 5, dano: 5, vel: 5 };
+    $('avisoOficina').textContent = '';
+    desenharOficina();
+  }
+  function desenharOficina() {
+    const slots = $('slotsOficina'); slots.innerHTML = '';
+    Progresso.SLOTS.forEach((s, i) => {
+      const cr = Progresso.criadas()[s], b = document.createElement('button');
+      b.innerHTML = `Carta ${i + 1}<small></small>`; b.querySelector('small').textContent = cr ? cr.nome : 'vazia';
+      b.setAttribute('aria-pressed', s === slotOf);
+      b.onclick = () => { slotOf = s; carregarSlot(); };
+      slots.appendChild(b);
+    });
+    const bases = $('basesOficina'); bases.innerHTML = '';
+    Progresso.BASES.forEach(k => {
+      const b = document.createElement('button');
+      b.innerHTML = `${arte(k)}${CARTAS[k].nome.split(' ')[0]}`;
+      b.setAttribute('aria-pressed', spec.base === k); b.title = CARTAS[k].nome + ': ' + CARTAS[k].desc;
+      b.onclick = () => { spec.base = k; desenharOficina(); };
+      bases.appendChild(b);
+    });
+    $('inNomeCarta').value = spec.nome;
+    $('pontosMax').textContent = Progresso.PONTOS_MAX;
+    const sl = $('slidersOficina'); sl.innerHTML = '';
+    [['vida', '❤️ Vida'], ['dano', '⚔️ Dano'], ['vel', '💨 Velocidade']].forEach(([k, rot]) => {
+      const d = document.createElement('label'); d.className = 'slider-linha';
+      d.innerHTML = `<span>${rot}</span><input type="range" min="1" max="10" step="1" value="${spec[k]}"><output>${spec[k]}</output>`;
+      const inp = d.querySelector('input');
+      inp.oninput = () => { spec[k] = +inp.value; d.querySelector('output').textContent = inp.value; atualizarPrevia(); };
+      sl.appendChild(d);
+    });
+    atualizarPrevia();
+  }
+  function atualizarPrevia() {
+    const b = CARTAS[spec.base], c = Progresso.calcular(spec), max = Progresso.PONTOS_MAX;
+    const pu = $('pontosUsados');
+    pu.textContent = c.soma > max ? `Pontos usados: ${c.soma} de ${max}. Tire ${c.soma - max} para poder salvar.` : `Pontos usados: ${c.soma} de ${max}`;
+    pu.classList.toggle('estourou', c.soma > max);
+    const nome = $('inNomeCarta').value.trim() || 'Minha carta';
+    $('previaCarta').innerHTML = `<span class="custo">${c.custo}</span>${arte(spec.base)}<div><b></b>` +
+      `<table><tr><td>❤️ Vida</td><td>${c.hp}</td></tr><tr><td>⚔️ Dano</td><td>${c.dmg}</td></tr>` +
+      `<tr><td>💨 Velocidade</td><td>${fmtN(c.speed)}</td></tr><tr><td>⚡ Custo</td><td>${c.custo}</td></tr></table></div>`;
+    $('previaCarta').querySelector('b').textContent = nome;
+    $('formulaCusto').innerHTML =
+      `<div><b>Custo</b> = custo do ${b.nome} × (Vida + Dano + Velocidade) ÷ 15</div>` +
+      `<div>= ${b.custo} × (${spec.vida} + ${spec.dano} + ${spec.vel}) ÷ 15 = ${b.custo} × ${c.soma} ÷ 15 = ${fmtN(c.exato)}` +
+      ` → arredondando: <b>${c.custo}</b> ⚡${c.custo !== Math.round(c.exato) ? ' (o custo fica entre 1 e 9)' : ''}</div>` +
+      `<div style="margin-top:4px">❤️ Vida = ${b.hp} × ${spec.vida} ÷ 5 = ${c.hp} &nbsp;·&nbsp; ⚔️ Dano = ${b.dmg} × ${spec.dano} ÷ 5 = ${c.dmg}</div>`;
+  }
+  $('inNomeCarta').addEventListener('input', () => { spec.nome = $('inNomeCarta').value; atualizarPrevia(); });
+  $('btSalvarCarta').onclick = () => {
+    spec.nome = $('inNomeCarta').value.trim();
+    if (!spec.nome) { $('avisoOficina').textContent = 'Dê um nome para a sua carta.'; return; }
+    if (spec.vida + spec.dano + spec.vel > Progresso.PONTOS_MAX) { $('avisoOficina').textContent = `Use no máximo ${Progresso.PONTOS_MAX} pontos.`; return; }
+    Progresso.salvarCriada(slotOf, spec); registrarCriadas();
+    $('avisoOficina').textContent = '✅ Carta salva! Coloque-a no seu baralho em 🃏 Baralho (vale contra o robô e no treino).';
+    desenharOficina();
+  };
+  $('btApagarCarta').onclick = () => {
+    if (!Progresso.criadas()[slotOf]) { carregarSlot(); return; }
+    Progresso.apagarCriada(slotOf); registrarCriadas();
+    baralhoAluno = Progresso.baralho(); if (!baralhoValido(baralhoAluno)) baralhoAluno = BARALHO_PADRAO.slice();
+    carregarSlot(); $('avisoOficina').textContent = 'Carta apagada.';
+  };
+  $('btOficina').onclick = () => { slotOf = 'meu1'; carregarSlot(); mostrar('telaOficina'); };
+  $('btVoltarOficina').onclick = () => mostrar('telaInicio');
   atualizarInicio();
   $('btProfessor').onclick = () => { montarProfessor(); mostrar('telaProfessor'); };
   $('btComo').onclick = () => mostrar('telaComo');
@@ -961,12 +1158,14 @@
   // Para o modo duelo (duelo.js)
   window.Arena = {
     CARTAS, BARALHO, codificar, decodificar, descreverCfg, get cfg() { return cfg; },
-    get baralhoAluno() { return baralhoAluno.slice(); }, novaMao, baralhoValido, mostrar, renderMao, mostrarFim, aviso, podeColocar, jogar, terminar,
+    get baralhoAluno() { return baralhoOficial(baralhoAluno); }, novaMao, baralhoValido, mostrar, renderMao, mostrarFim, aviso, podeColocar, jogar, terminar,
     get J() { return J; }, set J(v) { J = v; },
     novaPartida(c, online, nomeInim) {
       novaPartida(c);
       if (online && (online.papel === 'anfitriao' || online.papel === 'convidado')) { // duelo: todos no mesmo nível, para ser justo
-        const um = {}; BARALHO.forEach(k => (um[k] = 1)); J.niveis = [um, um]; renderMao();
+        const um = {}; BARALHO.forEach(k => (um[k] = 1)); J.niveis = [um, um];
+        J.maos[0] = novaMao(baralhoOficial(baralhoAluno)); // e só cartas oficiais
+        renderMao();
       }
       J.online = online || null; J.nomeInim = nomeInim || null; cfgPartida = c; $('btPausa').hidden = !!online; return J; },
   };

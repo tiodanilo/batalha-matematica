@@ -106,7 +106,8 @@ body:has(#telaJogo.ativa) .wm { bottom: auto; top: calc(58px + env(safe-area-ins
 .tool .lbl { font-size: 11px; font-weight: 800; letter-spacing: .05em; line-height: 1; text-transform: uppercase; color: var(--tinta); }
 .fs-flutuante { position: fixed; z-index: 30; top: max(12px, env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); }
 .fs-flutuante[hidden] { display: none; }
-body:has(#telaJogo.ativa) .fs-flutuante, body:has(#telaCartas.ativa) .fs-flutuante { display: none; }
+body:has(#telaJogo.ativa) .fs-flutuante, body:has(#telaCartas.ativa) .fs-flutuante, body:has(#telaLoja.ativa) .fs-flutuante,
+body:has(#telaRanking.ativa) .fs-flutuante, body:has(#telaOficina.ativa) .fs-flutuante, body:has(#telaPerfil.ativa) .fs-flutuante { display: none; }
 .grade-cartas { padding-bottom: 36px; }
 body:has(#telaInicio.ativa) .fs-flutuante .lbl { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.9); }
 body:has(#telaInicio.ativa) .selo { margin-right: 52px; }
@@ -215,6 +216,60 @@ body:has(#telaInicio.ativa) .selo { margin-right: 52px; }
 .t-madeira { --cor-tampa: #b0753a; --cor-corpo: #8a5a2b; --cor-brilho: #ffcf8a; }
 .t-prata { --cor-tampa: #d9e2ec; --cor-corpo: #9aa8b8; --cor-brilho: #ffffff; }
 .t-ouro { --cor-tampa: #ffd84a; --cor-corpo: #e0a714; --cor-brilho: #fff3b0; }
+.t-pacote { --cor-tampa: #b58cff; --cor-corpo: #7a3fd1; --cor-brilho: #e6d6ff; }
+.linha-4 { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.linha-4 .bj-mini { padding: 5px 2px; font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.ic-mini { font-size: 18px; line-height: 1.1; }
+.chip-perfil { display: flex; align-items: center; gap: 6px; position: relative; padding-bottom: 6px; }
+.nv-jogador { font-family: 'Lilita One', sans-serif; font-size: 12px; background: #2f6fd6; border-radius: 8px; padding: 0 6px; color: #fff; flex: none; }
+.xp-barra { position: absolute; left: 12px; right: 12px; bottom: 2px; height: 3px; background: rgba(255,255,255,.15); border-radius: 2px; overflow: hidden; }
+.xp-barra i { display: block; height: 100%; width: 0; background: #7dd3ff; }
+/* Loja */
+.grade-loja { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.item-loja { background: linear-gradient(180deg, rgba(36,44,86,.95), rgba(18,22,48,.95)); border: 3px solid var(--ouro-3); border-radius: 18px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: #fff; }
+.item-loja .vitrine-bau { width: 96px; height: 70px; position: relative; }
+.item-loja .vitrine-bau .mini-bau { width: 96px; height: 70px; }
+.item-loja .vitrine-bau .mini-bau::before { height: 28px; border-radius: 20px 20px 4px 4px; border-width: 4px; }
+.item-loja .vitrine-bau .mini-bau::after { height: 44px; border-width: 4px; border-radius: 4px 4px 10px 10px; }
+.item-loja .pacote { font-size: 54px; line-height: 70px; }
+.item-loja b { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 20px; color: var(--ouro-1); }
+.item-loja span { font-size: 14px; color: #dfe6ff; }
+.item-loja .bj { width: 100%; font-size: 18px; flex-direction: row; justify-content: center; padding: 8px; }
+.item-loja .bj:disabled { filter: grayscale(.8) brightness(.8); cursor: default; }
+/* Ranking */
+.chips-ordem { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips-ordem button { font: 700 14px 'Baloo 2', sans-serif; color: #fff; cursor: pointer; border-radius: 999px; padding: 3px 12px; background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.2); }
+.chips-ordem button[aria-pressed="true"] { background: var(--ouro-2); color: #2a1606; border-color: var(--ouro-1); }
+.lista-ranking { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.lista-ranking li { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 8px; background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.12); border-radius: 14px; padding: 6px 12px; color: #fff; }
+.lista-ranking li.eu { border-color: var(--ouro-2); background: rgba(255,210,63,.14); }
+.lista-ranking .pos { font-family: 'Lilita One', sans-serif; font-size: 22px; text-align: center; color: #c9d3f5; }
+.lista-ranking li:nth-child(1) .pos { color: #ffd84a; } .lista-ranking li:nth-child(2) .pos { color: #e3e8f0; } .lista-ranking li:nth-child(3) .pos { color: #e0a06a; }
+.lista-ranking .quem b { display: block; font-size: 17px; line-height: 1.1; }
+.lista-ranking .quem small { color: #c9d3f5; font-size: 12px; font-variant-numeric: tabular-nums; }
+.lista-ranking .valor { font-family: 'Lilita One', sans-serif; font-size: 22px; color: var(--ouro-1); font-variant-numeric: tabular-nums; text-align: right; }
+.lista-ranking .valor small { display: block; font-family: 'Baloo 2', sans-serif; font-size: 11px; color: #c9d3f5; }
+/* Oficina */
+.oficina { gap: 8px; }
+.bases-oficina { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.bases-oficina button { background: #f7ecd0; border: 3px solid #8a6d3b; border-radius: 12px; padding: 2px; cursor: pointer; font: 700 11px 'Baloo 2', sans-serif; color: #2b2210; line-height: 1.1; }
+.bases-oficina button .retrato, .bases-oficina button .ic { width: 46px; height: 46px; display: block; margin: 0 auto; font-size: 32px; }
+.bases-oficina button[aria-pressed="true"] { border-color: #ffd23f; box-shadow: 0 0 0 3px #ffd23f; }
+.sliders { display: flex; flex-direction: column; gap: 6px; }
+.slider-linha { display: grid; grid-template-columns: 124px 1fr 30px; white-space: nowrap; align-items: center; gap: 8px; color: #fff; font-weight: 700; }
+.slider-linha input { width: 100%; accent-color: #ffd23f; }
+.slider-linha output { font-family: 'Lilita One', sans-serif; font-size: 20px; color: var(--ouro-1); text-align: right; }
+.pontos-usados { font-weight: 800; color: #dfe6ff; text-align: center; }
+.pontos-usados.estourou { color: #ff8a80; }
+.previa-carta { display: grid; grid-template-columns: 90px 1fr; gap: 10px; align-items: center; background: #f7ecd0; color: #2b2210; border: 3px solid #8a6d3b; border-radius: 14px; padding: 8px; position: relative; }
+.previa-carta .retrato, .previa-carta .ic { width: 84px; height: 84px; font-size: 56px; text-align: center; }
+.previa-carta b { font-size: 18px; display: block; }
+.previa-carta table { font-size: 14px; border-collapse: collapse; width: 100%; }
+.previa-carta td { padding: 1px 4px; } .previa-carta td:last-child { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.previa-carta .custo { position: absolute; top: -10px; left: -8px; width: 30px; height: 30px; border-radius: 50%; background: var(--roxo); color: #fff; font-weight: 800; font-size: 17px; display: grid; place-items: center; border: 2px solid #fff; }
+.formula { background: #fbf1d6; color: #2a1606; border-radius: 12px; padding: 8px 12px; font-size: 16px; line-height: 1.35; border: 2px dashed #8a6d3b; }
+.formula b { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 18px; color: #7a3fd1; }
+.carta-esc .criada { position: absolute; top: -9px; right: -6px; background: #7a3fd1; color: #fff; font-size: 11px; font-weight: 800; border-radius: 8px; padding: 1px 6px; border: 2px solid #fff; }
 /* Quem está jogando */
 .lista-perfis { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
 .lista-perfis button {
@@ -412,7 +467,8 @@ table.temastab { width: 100%; border-collapse: collapse; font-size: 16px; } .tem
     </div>
     <div class="painel-batalha">
       <div class="perfil-linha">
-        <button class="chip-perfil" id="btPerfil" aria-label="Trocar quem está jogando"><span>👤</span> <b id="nomePerfil">Jogador</b></button>
+        <button class="chip-perfil" id="btPerfil" aria-label="Trocar quem está jogando"><span>👤</span> <b id="nomePerfil">Jogador</b>
+          <span class="nv-jogador" id="nvJogador">Nv 1</span><span class="xp-barra"><i id="xpBarra"></i></span></button>
         <span class="chip-moedas" title="Suas moedas">🪙 <b id="moedasInicio">0</b></span>
       </div>
       <div class="baus-linha" id="bausInicio" aria-label="Seus baús"></div>
@@ -428,11 +484,14 @@ table.temastab { width: 100%; border-collapse: collapse; font-size: 16px; } .tem
         <button class="bj bj-azul" id="btEntrar"><span class="bj-ic">🤖</span>Contra o robô</button>
         <button class="bj bj-verm" id="btDuelo"><span class="bj-ic">⚔️</span>Duelo<small>contra um colega</small></button>
       </div>
-      <div class="linha-menor">
-        <button class="bj-mini" id="btCartas">🃏 Meu baralho</button>
-        <button class="bj-mini" id="btJogarLivre">🎲 Treino livre<small></small></button>
-        <button class="bj-mini" id="btComo">📖 Como jogar</button>
-        <button class="bj-mini" id="btProfessor">🍎 Professor</button>
+      <div class="linha-menor linha-4">
+        <button class="bj-mini" id="btCartas"><span class="ic-mini">🃏</span>Baralho</button>
+        <button class="bj-mini" id="btLoja"><span class="ic-mini">🛒</span>Loja</button>
+        <button class="bj-mini" id="btRanking"><span class="ic-mini">🏆</span>Ranking</button>
+        <button class="bj-mini" id="btOficina"><span class="ic-mini">🔨</span>Oficina</button>
+        <button class="bj-mini" id="btJogarLivre"><span class="ic-mini">🎲</span>Treino<small></small></button>
+        <button class="bj-mini" id="btComo"><span class="ic-mini">📖</span>Ajuda</button>
+        <button class="bj-mini" id="btProfessor"><span class="ic-mini">🍎</span>Professor</button>
       </div>
     </div>
   </div>
@@ -453,6 +512,63 @@ table.temastab { width: 100%; border-collapse: collapse; font-size: 16px; } .tem
     <div class="linha-menor" style="grid-template-columns:1fr 1fr">
       <button class="bj-mini" id="btBaralhoPadrao">↺ Baralho inicial</button>
       <button class="bj bj-azul" id="btSalvarBaralho" style="font-size:18px;padding:10px 6px">✓ Pronto</button>
+    </div>
+  </div>
+</section>
+
+<!-- LOJA -->
+<section id="telaLoja" class="tela inicio">
+  <div class="inicio-veu" style="background:rgba(8,12,30,.6)"></div>
+  <div class="cartas-miolo" style="max-width:620px">
+    <div class="cartas-topo">
+      <button class="bj-mini" id="btVoltarLoja" style="width:auto;padding:8px 14px">← Voltar</button>
+      <h2 class="cartas-titulo">Loja</h2>
+      <span class="chip-moedas">🪙 <b id="moedasLoja">0</b></span>
+    </div>
+    <p class="cartas-dica" id="dicaLoja">Troque suas moedas por cartas. Quanto mais contas certas, mais moedas você ganha!</p>
+    <div class="grade-loja" id="gradeLoja"></div>
+  </div>
+</section>
+
+<!-- RANKING -->
+<section id="telaRanking" class="tela inicio">
+  <div class="inicio-veu" style="background:rgba(8,12,30,.6)"></div>
+  <div class="cartas-miolo" style="max-width:620px">
+    <div class="cartas-topo">
+      <button class="bj-mini" id="btVoltarRanking" style="width:auto;padding:8px 14px">← Voltar</button>
+      <h2 class="cartas-titulo">Ranking</h2>
+    </div>
+    <div class="seg-escuro" id="abasRanking" style="grid-template-columns:1fr 1fr"></div>
+    <div class="chips-ordem" id="ordemRanking"></div>
+    <p class="cartas-dica" id="dicaRanking"></p>
+    <ol class="lista-ranking" id="listaRanking"></ol>
+  </div>
+</section>
+
+<!-- OFICINA DE CARTAS -->
+<section id="telaOficina" class="tela inicio">
+  <div class="inicio-veu" style="background:rgba(8,12,30,.6)"></div>
+  <div class="cartas-miolo" style="max-width:620px">
+    <div class="cartas-topo">
+      <button class="bj-mini" id="btVoltarOficina" style="width:auto;padding:8px 14px">← Voltar</button>
+      <h2 class="cartas-titulo">Oficina de cartas</h2>
+    </div>
+    <div class="seg-escuro" id="slotsOficina" style="grid-template-columns:1fr 1fr"></div>
+    <div class="painel-batalha oficina" style="animation:none">
+      <span class="rotulo">1. Escolha o guerreiro base</span>
+      <div class="bases-oficina" id="basesOficina"></div>
+      <label class="rotulo" for="inNomeCarta">2. Dê um nome para a carta</label>
+      <input id="inNomeCarta" class="campo-escuro" maxlength="16" placeholder="Ex.: Guardião do π" autocomplete="off">
+      <span class="rotulo">3. Distribua até <span id="pontosMax">24</span> pontos</span>
+      <div class="sliders" id="slidersOficina"></div>
+      <div class="pontos-usados" id="pontosUsados"></div>
+      <div class="previa-carta" id="previaCarta"></div>
+      <div class="formula" id="formulaCusto"></div>
+      <div class="aviso-escuro" id="avisoOficina"></div>
+      <div class="linha-menor">
+        <button class="bj-mini" id="btApagarCarta">🗑 Apagar esta carta</button>
+        <button class="bj bj-azul" id="btSalvarCarta" style="font-size:18px;padding:10px 6px">✓ Salvar carta</button>
+      </div>
     </div>
   </div>
 </section>
@@ -652,12 +768,12 @@ table.temastab { width: 100%; border-collapse: collapse; font-size: 16px; } .tem
 <img class="wm" alt="Tio Danilo" src="data:image/png;base64,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">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <!-- ?v= muda a cada atualização, para o navegador não misturar arquivos novos com antigos -->
-<script src="perguntas.js?v=20261107"></script>
-<script src="render3d.js?v=20261107"></script>
-<script src="progresso.js?v=20261107"></script>
-<script src="jogo.js?v=20261107"></script>
-<script src="sala-firebase.js?v=20261107"></script>
-<script src="duelo.js?v=20261107"></script>
+<script src="perguntas.js?v=20261109"></script>
+<script src="render3d.js?v=20261109"></script>
+<script src="progresso.js?v=20261109"></script>
+<script src="jogo.js?v=20261109"></script>
+<script src="sala-firebase.js?v=20261109"></script>
+<script src="duelo.js?v=20261109"></script>
 
 </body>
 </html>

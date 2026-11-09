@@ -119,7 +119,33 @@
   }
 
   const salas = {};
+  // Ranking: cada ranking é uma "sala" de 4 caracteres com o campo r/<aluno> (as regras do banco já permitem)
+  const comPrazo = (p, ms) => Promise.race([p, new Promise((_, erro) => setTimeout(() => erro(new Error('tempo')), ms))]);
+  async function refRanking(nome) {
+    await comPrazo(iniciar(), 10000);
+    const base = db.ref('salas/' + codigo4(nome));
+    base.child('tipo').set('ranking').catch(() => {});
+    return base.child('r');
+  }
+  const num = v => Math.max(0, Math.min(1e7, Math.floor(+v || 0)));
+  const ranking = {
+    async enviar(nomes, id, d) {
+      if (!/^[a-z0-9]{6,20}$/.test(id)) return;
+      const limpo = { nome: String(d.nome || '').slice(0, 16), v: num(d.v), e: num(d.e), d: num(d.d), partidas: num(d.partidas),
+        acertos: num(d.acertos), erradas: num(d.erradas), moedas: num(d.moedas), nivel: num(d.nivel), t: firebase.database.ServerValue.TIMESTAMP };
+      for (const n of nomes) { const r = await refRanking(n); await comPrazo(r.child(id).set(limpo), 10000); }
+    },
+    async ler(nome) {
+      const r = await refRanking(nome);
+      const s = await comPrazo(r.once('value'), 10000);
+      return Object.entries(s.val() || {}).filter(([, v]) => v && typeof v === 'object').map(([id, v]) => ({
+        id, nome: String(v.nome || '?').slice(0, 16), v: num(v.v), e: num(v.e), d: num(v.d), partidas: num(v.partidas),
+        acertos: num(v.acertos), erradas: num(v.erradas), moedas: num(v.moedas), nivel: num(v.nivel) || 1,
+      }));
+    },
+  };
   window.SalaFirebase = {
+    ranking,
     codigo4,
     // devolve um objeto parecido com a "sala" do Claude, ou null se não der para conectar
     async abrir() {

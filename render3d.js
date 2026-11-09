@@ -471,7 +471,7 @@
       o.topo = e.rei ? 4.2 : 3.4;
       o.bandeiras = []; o.modelo.traverse(c => { if (c.userData.bandeira) o.bandeiras.push(c); });
     } else {
-      const k = e.def && MODELOS[e.def.key] ? e.def.key : 'balista';
+      const k0 = e.def && (e.def.modelo || e.def.key), k = MODELOS[k0] ? k0 : 'balista'; // carta criada usa o desenho da base
       const mod = MODELOS[k](e.team);
       const { g: modelo, ...partes } = mod; // o grupo do modelo fica dentro do grupo da entidade (não no lugar dele)
       Object.assign(o, partes);
