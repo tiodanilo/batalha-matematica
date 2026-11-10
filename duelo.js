@@ -64,6 +64,7 @@
   $('btEntrarSala').onclick = async () => {
     meuNome = $('inNome').value.trim().replace(/\s+/g, ' ').slice(0, 16);
     if (!meuNome) { $('avisoSala').textContent = 'Escreva seu nome para os colegas saberem quem é você.'; return; }
+    if (window.Progresso && Progresso.nomeProibido(meuNome)) { $('avisoSala').textContent = 'Esse nome não é permitido. Escolha outro, sem palavrão ou ofensa.'; return; }
     guardar.gravar('arena-nome', meuNome);
     if (window.Progresso) Progresso.renomearPadrao(meuNome); // o perfil "Jogador" ganha o nome do aluno
     try { sala = await room.join('sala-' + codigo.toLowerCase()); }

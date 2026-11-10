@@ -678,7 +678,6 @@
   function mostrarRecompensa() {
     if (!J.premio) {
       J.premio = Progresso.recompensar({ venceu: J.vencedor === 0, empate: J.vencedor === null, coroas: J.coroas[0], certas: J.certas, erradas: J.erradas });
-      enviarRanking();
     }
     const p = J.premio, box = $('recompensas'), jog = Progresso.jogador;
     let html = `<div class="total">🪙 +${p.total} moedas <span style="font-size:18px;color:#2f6fd6">⭐ +${p.xpGanho} XP</span></div>` +
@@ -920,6 +919,7 @@
   $('btCriarPerfil').onclick = () => {
     const nome = $('inNovoPerfil').value;
     // o primeiro aluno do computador "assume" o perfil inicial (com o que já ganhou)
+    if (Progresso.nomeProibido(nome)) { $('avisoPerfil').textContent = 'Esse nome não é permitido. Escolha outro, sem palavrão ou ofensa.'; return; }
     const r = Progresso.nome === 'Jogador' && Progresso.perfis().length === 1 && Progresso.renomearPadrao(nome) ? 'ok' : Progresso.criar(nome);
     if (r === 'vazio') { $('avisoPerfil').textContent = 'Escreva seu nome.'; return; }
     $('inNovoPerfil').value = '';
@@ -944,7 +944,7 @@
     const r = Progresso.importar(await f.text());
     $('inArquivo').value = '';
     if (r === 'ok') { trocouPerfil(); desenharPerfis(); $('avisoArquivo').textContent = `Progresso de ${Progresso.nome} carregado!`; }
-    else $('avisoArquivo').textContent = r === 'semEspaco' ? 'Carreguei, mas este navegador não deixou guardar.' : 'Esse arquivo não é um progresso da Batalha Matemática.';
+    else $('avisoArquivo').textContent = r === 'semEspaco' ? 'Carreguei, mas este navegador não deixou guardar.' : r === 'proibido' ? 'O nome desse arquivo não é permitido.' : 'Esse arquivo não é um progresso da Batalha Matemática.';
   };
 
   /* ---------- Loja ---------- */
@@ -971,24 +971,11 @@
   $('btLoja').onclick = () => { desenharLoja(); mostrar('telaLoja'); };
   $('btVoltarLoja').onclick = () => mostrar('telaInicio');
 
-  /* ---------- Ranking (online, pelo Firebase do site) ---------- */
-  const noClaude = !!(window.claude && window.claude.use);
-  function enviarRanking() {
-    if (noClaude || !window.SalaFirebase || !SalaFirebase.ranking || Progresso.nome === 'Jogador') return Promise.resolve();
-    const nomes = ['ranking-geral'];
-    if (Progresso.turma) nomes.push('ranking-turma-' + Progresso.turma);
-    return SalaFirebase.ranking.enviar(nomes, Progresso.perfil.id, Progresso.dadosRanking()).catch(() => {});
-  }
-  let abaRk = 'turma', ordemRk = 'v';
+  /* ---------- Ranking: só os alunos DESTE computador (nada vai para a internet — LGPD) ---------- */
+  let ordemRk = 'v';
   const ORDENS = [['v', '🏆 Vitórias'], ['moedas', '🪙 Moedas'], ['partidas', '🎮 Partidas'], ['acertos', '✅ Acertos'], ['nivel', '⭐ Nível']];
   const pctAcerto = j => (j.acertos + j.erradas ? Math.round(j.acertos / (j.acertos + j.erradas) * 100) : 0);
   function desenharControlesRk() {
-    const abas = $('abasRanking'); abas.innerHTML = '';
-    [['turma', 'Minha turma' + (Progresso.turma ? ` (${Progresso.turma})` : '')], ['geral', 'Geral']].forEach(([id, rot]) => {
-      const b = document.createElement('button'); b.textContent = rot; b.setAttribute('aria-pressed', abaRk === id);
-      b.onclick = () => { abaRk = id; desenharControlesRk(); carregarRk(); };
-      abas.appendChild(b);
-    });
     const ord = $('ordemRanking'); ord.innerHTML = '';
     ORDENS.forEach(([id, rot]) => {
       const b = document.createElement('button'); b.textContent = rot; b.setAttribute('aria-pressed', ordemRk === id);
@@ -996,28 +983,17 @@
       ord.appendChild(b);
     });
   }
-  let dadosRk = [];
-  async function carregarRk() {
-    const lista = $('listaRanking'); lista.innerHTML = ''; dadosRk = [];
-    if (noClaude || !window.SalaFirebase || !SalaFirebase.ranking) { $('dicaRanking').textContent = 'O ranking funciona no site: tiodanilo.github.io/batalha-matematica'; return; }
-    if (abaRk === 'turma' && !Progresso.turma) { $('dicaRanking').textContent = 'Digite o código da turma na tela de início para ver o ranking da sua turma.'; return; }
-    $('dicaRanking').textContent = 'Carregando…';
-    const aba = abaRk;
-    try {
-      await enviarRanking();
-      const dados = await SalaFirebase.ranking.ler(aba === 'turma' ? 'ranking-turma-' + Progresso.turma : 'ranking-geral');
-      if (aba !== abaRk) return;
-      dadosRk = dados; desenharRk();
-    } catch (e) { $('dicaRanking').textContent = 'Não consegui carregar o ranking agora. Confira a internet e tente de novo.'; }
-  }
   function desenharRk() {
     const lista = $('listaRanking'); lista.innerHTML = '';
-    if (!dadosRk.length) { $('dicaRanking').textContent = 'Ninguém no ranking ainda. Jogue uma partida para aparecer!'; return; }
+    const dadosRk = Progresso.perfis().map(p => ({
+      id: p.id, nome: p.nome, v: p.stats.vitorias, e: p.stats.empates, d: p.stats.derrotas, partidas: p.stats.partidas,
+      acertos: p.stats.acertos, erradas: p.stats.erradas, moedas: p.moedas, nivel: Progresso.nivelDeXp(p.xp).nivel,
+    }));
     const val = j => (ordemRk === 'v' ? j.v * 1e6 + j.e * 1e3 - j.d : j[ordemRk]);
     const ord = dadosRk.slice().sort((a, b) => val(b) - val(a));
     const euId = Progresso.perfil.id, minhaPos = ord.findIndex(j => j.id === euId);
-    $('dicaRanking').textContent = (Progresso.nome === 'Jogador' ? 'Toque em 👤 e escreva seu nome para entrar no ranking. ' : '') +
-      (minhaPos >= 0 ? `Você está em ${minhaPos + 1}º lugar de ${ord.length}.` : `${ord.length} ${ord.length === 1 ? 'jogador' : 'jogadores'}.`);
+    $('dicaRanking').textContent = `Alunos que jogam neste computador. Os nomes ficam só aqui: nada vai para a internet. ` +
+      (ord.length > 1 ? `Você está em ${minhaPos + 1}º lugar de ${ord.length}.` : 'Para comparar, crie outros perfis em 👤.');
     const mostrarJ = ord.slice(0, 50);
     if (minhaPos >= 50) mostrarJ.push(ord[minhaPos]);
     mostrarJ.forEach(j => {
@@ -1031,7 +1007,7 @@
       lista.appendChild(li);
     });
   }
-  $('btRanking').onclick = () => { abaRk = Progresso.turma ? 'turma' : 'geral'; desenharControlesRk(); mostrar('telaRanking'); carregarRk(); };
+  $('btRanking').onclick = () => { desenharControlesRk(); mostrar('telaRanking'); desenharRk(); };
   $('btVoltarRanking').onclick = () => mostrar('telaInicio');
 
   /* ---------- Oficina: o aluno cria a própria carta ---------- */
@@ -1093,6 +1069,7 @@
     spec.nome = $('inNomeCarta').value.trim();
     if (!spec.nome) { $('avisoOficina').textContent = 'Dê um nome para a sua carta.'; return; }
     if (spec.vida + spec.dano + spec.vel > Progresso.PONTOS_MAX) { $('avisoOficina').textContent = `Use no máximo ${Progresso.PONTOS_MAX} pontos.`; return; }
+    if (Progresso.nomeProibido(spec.nome)) { $('avisoOficina').textContent = 'Esse nome de carta não é permitido. Escolha outro, sem palavrão ou ofensa.'; return; }
     Progresso.salvarCriada(slotOf, spec); registrarCriadas();
     $('avisoOficina').textContent = '✅ Carta salva! Coloque-a no seu baralho em 🃏 Baralho (vale contra o robô e no treino).';
     desenharOficina();

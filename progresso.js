@@ -86,6 +86,38 @@
   }
   const P = () => dados.perfis[dados.atual];
 
+  /* Filtro de nomes: barra palavrão, xingamento e termo pejorativo em nome de aluno e de carta.
+     Desfaz truques comuns: acento, maiúscula, número no lugar de letra (p0rr4), letra repetida (poooorra)
+     e espaço/ponto no meio (p.o.r.r.a). Nenhum filtro é perfeito: o professor continua de olho. */
+  const tirarRep = s => s.replace(/(.)\1+/g, '$1');
+  const LEET = { 0: 'o', 1: 'i', 2: 'z', 3: 'e', 4: 'a', 5: 's', 6: 'g', 7: 't', 8: 'b', 9: 'g', '@': 'a', '$': 's', '!': 'i', '|': 'i' };
+  function normalizar(s) {
+    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+      .replace(/[0-9@$!|]/g, c => LEET[c]).replace(/ç/g, 'c').replace(/[^a-z]+/g, ' ').trim();
+  }
+  // pedaços que não aparecem em nomes comuns: barrados em qualquer lugar, mesmo grudados ou espaçados
+  const RAIZES = ['caralh', 'porra', 'merda', 'bucet', 'boceta', 'piroc', 'punhet', 'xoxot', 'xerec', 'viado', 'viadinh',
+    'foder', 'fuder', 'fodid', 'fudid', 'fodas', 'arrombad', 'babaca', 'otario', 'imbecil', 'idiota', 'retardad', 'mongoloid',
+    'vagabund', 'vadia', 'piranh', 'safad', 'desgrac', 'cuzao', 'cusao', 'bosta', 'corno', 'chifrud', 'macaco', 'macaca',
+    'crioul', 'neguinh', 'sapatao', 'traveco', 'boiola', 'baitola', 'nazi', 'hitler', 'estupr', 'pedofil', 'porno', 'penis',
+    'vagina', 'siriric', 'brocha', 'escrot', 'fdp', 'pqp', 'vsf', 'vtnc', 'krl', 'kct', 'fuck', 'shit', 'bitch', 'nigg', 'puta']
+    .map(tirarRep);
+  // "puta" grudado aparece em "computador"/"disputa": ali só vale como palavra inteira
+  const EXCECOES = ['computa', 'disputa', 'reputa', 'imputa', 'deputa', 'amputa', 'caputa'];
+  // palavras curtas ou comuns em nomes (Pinto, Rolando): barradas só sozinhas
+  const PALAVRAS = new Set(['cu', 'cus', 'puto', 'putos', 'pau', 'rola', 'bicha', 'burro', 'burra', 'feio', 'feia', 'gordo',
+    'gorda', 'lixo', 'anta', 'besta', 'otaria', 'tnc', 'pnc', 'crl', 'krai', 'gay', 'sexo', 'sex', 'dick', 'xota', 'teta', 'tetas',
+    'bunda', 'coco', 'mijo', 'peido', 'nojento', 'nojenta', 'chato', 'chata', 'mane', 'trouxa', 'lesado', 'lesada', 'baleia']
+    .map(p => tirarRep(normalizar(p))));
+  function nomeProibido(s) {
+    const n = normalizar(s);
+    if (!n) return false;
+    if (n.split(' ').some(p => PALAVRAS.has(tirarRep(p)))) return true;
+    let junto = tirarRep(n.replace(/ /g, ''));
+    EXCECOES.forEach(e => { junto = junto.split(tirarRep(e)).join('#'); });
+    return RAIZES.some(r => junto.includes(r));
+  }
+
   function sortearBau() {
     const x = Math.random();
     return x < 0.07 ? 'ouro' : x < 0.35 ? 'prata' : 'madeira';
@@ -100,7 +132,7 @@
   }
 
   const api = {
-    NIVEL_MAX, BAUS, MAX_BAUS, LOJA, BASES, SLOTS, PONTOS_MAX, nivelDeXp,
+    NIVEL_MAX, BAUS, MAX_BAUS, LOJA, BASES, SLOTS, PONTOS_MAX, nivelDeXp, nomeProibido,
     iniciar(cartas, baralho, padrao) { CARTAS = cartas; BARALHO = baralho; PADRAO = padrao; ler(); },
     get perfil() { return P(); },
     get nome() { return P().nome; },
@@ -190,6 +222,7 @@
     },
     salvarCriada(slot, spec) {
       if (!SLOTS.includes(slot) || !specValida(spec)) return false;
+      if (nomeProibido(spec.nome)) return 'proibido';
       P().criadas[slot] = { base: spec.base, nome: spec.nome.trim().slice(0, 16), vida: spec.vida, dano: spec.dano, vel: spec.vel };
       gravar(); return true;
     },
@@ -205,6 +238,7 @@
     criar(nome) {
       nome = String(nome || '').trim().replace(/\s+/g, ' ').slice(0, 16);
       if (!nome) return 'vazio';
+      if (nomeProibido(nome)) return 'proibido';
       if (dados.perfis[nome]) { dados.atual = nome; gravar(); return 'existe'; }
       dados.perfis[nome] = perfilNovo(nome); dados.atual = nome; gravar();
       return 'ok';
@@ -212,16 +246,9 @@
     renomearPadrao(nome) { // o perfil "Jogador" ganha o nome do aluno
       nome = String(nome || '').trim().slice(0, 16);
       const p = P();
-      if (!nome || p.nome !== 'Jogador' || dados.perfis[nome]) return false;
+      if (!nome || nomeProibido(nome) || p.nome !== 'Jogador' || dados.perfis[nome]) return false;
       delete dados.perfis.Jogador; p.nome = nome; dados.perfis[nome] = p; dados.atual = nome; gravar();
       return true;
-    },
-
-    // o que vai para o ranking online
-    dadosRanking() {
-      const p = P(), s = p.stats;
-      return { nome: p.nome, v: s.vitorias, e: s.empates, d: s.derrotas, partidas: s.partidas, acertos: s.acertos, erradas: s.erradas,
-        moedas: p.moedas, nivel: nivelDeXp(p.xp).nivel, t: Date.now() };
     },
 
     // arquivo de progresso (só o aluno atual)
@@ -233,6 +260,7 @@
       try { d = JSON.parse(texto); } catch (e) { return 'invalido'; }
       if (!d || d.jogo !== 'batalha-matematica' || !d.perfil) return 'invalido';
       const nome = String(d.perfil.nome || 'Jogador').slice(0, 16);
+      if (nomeProibido(nome)) return 'proibido';
       dados.perfis[nome] = arrumar(d.perfil, nome); dados.atual = nome;
       return gravar() ? 'ok' : 'semEspaco';
     },
